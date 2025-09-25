@@ -4,56 +4,100 @@ from classes import Vertex, Edge
 from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from tqdm import tqdm
 
-def load_osm_json(path):
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f)
-
-def build_graph(roads):
-    from classes import Edge  # Ensure Edge class is up to date
+def build_graph():
+    # Clear existing data
+    Vertex.vertex_dict.clear()
+    Vertex._id_counter = 1
     Edge.edge_dict.clear()
     Edge._id_counter = 0
-    node_usage = Counter()
-    for road in roads:
-        for node in road['nodes']:
-            if node['lat'] is not None and node['lon'] is not None:
-                node_usage[(node['id'], node['lat'], node['lon'])] += 1
-    vertex_set = set()
-    for road in roads:
-        nodes = [n for n in road['nodes'] if n['lat'] is not None and n['lon'] is not None]
-        if not nodes:
-            continue
-        vertex_set.add((nodes[0]['id'], nodes[0]['lat'], nodes[0]['lon']))
-        vertex_set.add((nodes[-1]['id'], nodes[-1]['lat'], nodes[-1]['lon']))
-        for n in nodes:
-            if node_usage[(n['id'], n['lat'], n['lon'])] > 1:
-                vertex_set.add((n['id'], n['lat'], n['lon']))
-    vertices = {v: Vertex(*v) for v in vertex_set}
-    edges = []
-    for road in roads:
-        nodes = [n for n in road['nodes'] if n['lat'] is not None and n['lon'] is not None]
+
+    with open('./cleaned_data/osm_nodes_output.json', 'r', encoding='utf-8') as f:
+        nodes_dict = json.load(f)
+    with open('./cleaned_data/osm_roads_output.json', 'r', encoding='utf-8') as f:
+        roads_dict = json.load(f)
+    
+    # Convert dict to list of roads for processing
+    roads = []
+    for road_id, road_data in roads_dict.items():
+        if 'nodes' in road_data and road_data['nodes']:
+            road_data['id'] = road_id
+            roads.append(road_data)
+    
+    print("Step 1: Creating initial edges and vertices from roads...")
+    # Step 1: Create edges and vertices from roads (one edge per road, plus start/end vertices)
+    for road in tqdm(roads, desc="Creating initial edges"):
+        nodes = road['nodes']
         if len(nodes) < 2:
             continue
-        seg_start = 0
-        while seg_start < len(nodes) - 1:
-            for seg_end in range(seg_start + 1, len(nodes)):
-                n = nodes[seg_end]
-                key = (n['id'], n['lat'], n['lon'])
-                if key in vertices or seg_end == len(nodes) - 1:
-                    start_key = (nodes[seg_start]['id'], nodes[seg_start]['lat'], nodes[seg_start]['lon'])
-                    end_key = (nodes[seg_end]['id'], nodes[seg_end]['lat'], nodes[seg_end]['lon'])
-                    if start_key in vertices and end_key in vertices and seg_end > seg_start:
-                        non_vertex_nodes = [
-                            (nodes[i]['lat'], nodes[i]['lon'])
-                            for i in range(seg_start + 1, seg_end)
-                            if (nodes[i]['id'], nodes[i]['lat'], nodes[i]['lon']) not in vertices
-                        ]
-                        edge = Edge(vertices[start_key], vertices[end_key], non_vertex_nodes)
-                        edges.append(edge)
-                        # Add to both vertices' neighbor dicts
-                        vertices[start_key].neighbors[edge] = vertices[end_key]
-                        vertices[end_key].neighbors[edge] = vertices[start_key]
-                    seg_start = seg_end
+            
+        road_type = road.get('type', 'unknown')
+        oneway = road.get('oneway', False) is True
+        
+        # Create vertices for start and end of road
+        start_node_id = nodes[0]
+        end_node_id = nodes[-1]
+        
+        # Get node data from nodes_dict using the node ID
+        start_node_data = nodes_dict[start_node_id]
+        end_node_data = nodes_dict[end_node_id]
+        
+        # Constructor automatically returns existing vertex if ID already exists
+        start_vertex = Vertex(start_node_data['lat'], start_node_data['lon'], int(start_node_id))
+        end_vertex = Vertex(end_node_data['lat'], end_node_data['lon'], int(end_node_id))
+
+        # All intermediate nodes are non-vertex nodes for now
+        non_vertex_nodes = [
+            (nodes_dict[node_id]['lat'], nodes_dict[node_id]['lon'], int(node_id))
+            for node_id in nodes[1:-1]
+        ]
+        
+        # Create the edge
+        Edge(start_vertex, end_vertex, non_vertex_nodes, road_type, oneway)
+    
+    print("Step 2: Identifying shared nodes...")
+    # Step 2: Count node usage to identify which nodes should be vertices
+    node_usage = Counter()
+    for road in tqdm(roads, desc="Counting node usage"):
+        for node_id in road['nodes']:
+            node_usage[node_id] += 1
+    
+    # Nodes that appear in multiple roads should be vertices
+    should_be_vertices = {node_id for node_id, count in node_usage.items() if count > 1}
+    
+    print(f"Found {len(should_be_vertices)} shared nodes")
+    
+    print("Step 3: Creating vertex objects for intersection nodes...")
+    # Step 3: Create vertex objects for nodes that should be vertices
+    for node_id in tqdm(should_be_vertices, desc="Creating vertices"):
+        if node_id not in Vertex.vertex_dict:  # Don't recreate if already exists
+            node_data = nodes_dict[node_id]
+            Vertex(node_data['lat'], node_data['lon'], node_id)
+    
+    print("Step 4: Splitting edges at intersection points...")
+    # Step 4: Split edges where non-vertex nodes should actually be vertices
+    edges_to_process = list(Edge.edge_dict.values())  # Get current edges
+    
+    for original_edge in tqdm(edges_to_process, desc="Processing edges"):
+        # Find all vertices that need to be split on this edge
+        vertices_to_split = []
+        for lat, lon, node_id in original_edge.non_vertex_nodes:
+            if node_id in should_be_vertices:
+                vertex = Vertex.vertex_dict[node_id]
+                vertices_to_split.append(vertex)
+        
+        # Split the edge at all vertices (this handles multiple splits correctly)
+        if vertices_to_split:
+            current_edge = original_edge
+            for vertex in vertices_to_split:
+                try:
+                    edge1, edge2 = current_edge.split_edge_along_vertex(vertex, temporary=False)
+                    # Continue with the second edge for further splits
+                    current_edge = edge2
+                except ValueError:
+                    # Vertex not found on current edge (might have been split already)
                     break
-            else:
-                break
-    return vertices, edges
+
+    print(f"Graph construction complete!")
+    print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
+    
+    return Vertex.vertex_dict, Edge.edge_dict
