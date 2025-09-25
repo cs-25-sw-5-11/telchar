@@ -4,6 +4,8 @@ from functions_analysis import find_networks, filter_non_largest_network, bin_ed
 from functions_mapping import project_trip_coordinates_onto_edges, apply_projection_and_splitting, all_pairs_network_distances_between_layers
 from functions_plotting import plot_networks
 import matplotlib.pyplot as plt
+import json
+import os
 
 if __name__ == "__main__":
     roads = load_osm_json('cleaned_data/osm_roads_output.json')
@@ -20,10 +22,27 @@ if __name__ == "__main__":
     changes, vertex_layers = apply_projection_and_splitting(vertices_binned_matrix, results)
     print(f"Number of vertices after splitting: {len(Vertex.vertex_dict)}")
 
-    print(vertex_layers)
+    trip = 'trips_150103_6'
+    data_output_dict = {
+        'transitions':  {
+            trip: {}
+        }
+    }
 
-    # print(all_pairs_network_distances_between_layers(vertex_layers[0], vertex_layers[1]))
+
+    for i in range(len(vertex_layers)-1):
+        result = all_pairs_network_distances_between_layers(vertex_layers[i], vertex_layers[i+1])        
+        transition = {}
+        for k, v in result.items():
+            transition[k.id] = {vv.id: dist for vv, dist in v.items()}
+        data_output_dict['transitions'][trip][i] = transition
+
+    output_path = 'peter_fucking_around/output_data/network_distances.json'
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+    with open(output_path, 'w') as f:
+        json.dump(data_output_dict, f, indent=4)
 
     # Plot as usual
     # plot_networks(networks, edges_binned_matrix, results, highlight_lat=45.7485, highlight_lon=126.6905, show_densest_bin=True)
-    plot_networks(edges_binned_matrix, results, vertex_layers)
+    # plot_networks(edges_binned_matrix, results, vertex_layers)
