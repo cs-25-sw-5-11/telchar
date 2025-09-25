@@ -1,15 +1,16 @@
 from classes import Vertex, Edge
 from functions_building import load_osm_json, build_graph
+from functions_building import build_graph
+from functions_misc import output_network_distances
 from functions_analysis import find_networks, filter_non_largest_network, bin_edges_by_lat_lon, bin_vertices_by_lat_lon
 from functions_mapping import project_trip_coordinates_onto_edges, apply_projection_and_splitting, all_pairs_network_distances_between_layers
 from functions_plotting import plot_networks
+from functions_plotting import plot_networks, plot_directed_graph
 import matplotlib.pyplot as plt
 import json
 import os
 
 if __name__ == "__main__":
-    roads = load_osm_json('cleaned_data/osm_roads_output.json')
-    build_graph(roads)
 
     networks = find_networks(list(Vertex.vertex_dict.values()))
     filter_non_largest_network(networks)
@@ -42,6 +43,7 @@ if __name__ == "__main__":
 
     with open(output_path, 'w') as f:
         json.dump(data_output_dict, f, indent=4)
+    build_graph()
 
     # Plot as usual
     # plot_networks(networks, edges_binned_matrix, results, highlight_lat=45.7485, highlight_lon=126.6905, show_densest_bin=True)
