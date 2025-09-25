@@ -100,7 +100,10 @@ class Edge:
         
         found_idx = None
         for idx, (lat, lon, node_id) in enumerate(self.non_vertex_nodes):
-            if vertex.id == node_id:
+            # Ensure consistent type comparison - convert both to int
+            vertex_id = int(vertex.id) if isinstance(vertex.id, str) else vertex.id
+            compare_node_id = int(node_id) if isinstance(node_id, str) else node_id
+            if vertex_id == compare_node_id:
                 found_idx = idx
                 break
 
@@ -176,7 +179,7 @@ class Edge:
             min_dist_m = None
         return (*proj_point, min_dist_m, seg_idx)
     def __repr__(self):
-        return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m)"
+        return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m, type={self.type}, oneway={self.oneway})"
     def __hash__(self):
         return self.id
     def __eq__(self, other):

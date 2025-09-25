@@ -69,9 +69,11 @@ def build_graph():
     print("Step 3: Creating vertex objects for intersection nodes...")
     # Step 3: Create vertex objects for nodes that should be vertices
     for node_id in tqdm(should_be_vertices, desc="Creating vertices"):
-        if node_id not in Vertex.vertex_dict:  # Don't recreate if already exists
+        # Convert to int for consistent vertex lookup
+        int_node_id = int(node_id) if isinstance(node_id, str) else node_id
+        if int_node_id not in Vertex.vertex_dict:  # Don't recreate if already exists
             node_data = nodes_dict[node_id]
-            Vertex(node_data['lat'], node_data['lon'], node_id)
+            Vertex(node_data['lat'], node_data['lon'], int_node_id)
     
     print("Step 4: Splitting edges at intersection points...")
     # Step 4: Split edges where non-vertex nodes should actually be vertices
@@ -81,8 +83,10 @@ def build_graph():
         # Find all vertices that need to be split on this edge
         vertices_to_split = []
         for lat, lon, node_id in original_edge.non_vertex_nodes:
-            if node_id in should_be_vertices:
-                vertex = Vertex.vertex_dict[node_id]
+            if str(node_id) in should_be_vertices:
+                # Convert to int for consistent vertex lookup
+                int_node_id = int(node_id) if isinstance(node_id, str) else node_id
+                vertex = Vertex.vertex_dict[int_node_id]
                 vertices_to_split.append(vertex)
         
         # Split the edge at all vertices (this handles multiple splits correctly)
@@ -90,9 +94,12 @@ def build_graph():
             current_edge = original_edge
             for vertex in vertices_to_split:
                 try:
-                    edge1, edge2 = current_edge.split_edge_along_vertex(vertex, temporary=False)
-                    # Continue with the second edge for further splits
-                    current_edge = edge2
+                    result = current_edge.split_edge_along_vertex(vertex, temporary=False)
+                    if result is not None:
+                        edge1, edge2 = result
+                        # Continue with the second edge for further splits
+                        current_edge = edge2
+                    # If result is None, the vertex was already at start/end, so no split needed
                 except ValueError:
                     # Vertex not found on current edge (might have been split already)
                     break
