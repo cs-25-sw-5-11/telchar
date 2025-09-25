@@ -1,5 +1,6 @@
 import unittest
-from classes import Vertex, Edge, haversine
+from classes import Vertex, Edge
+from functions_misc import haversine
 import functions_analysis as fa
 import functions_building as fb
 import functions_mapping as fm
