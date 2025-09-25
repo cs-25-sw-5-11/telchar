@@ -36,6 +36,13 @@ class Vertex:
         self.backward_edges = {}
         Vertex.vertex_dict[self.id] = self
 
+    def print_neighbors(self):
+        print(f"Vertex {self.id} neighbors:")
+        for edge, vertex in self.onward_edges.items():
+            print(f"  Outward via Edge {edge.id} to Vertex {vertex.id}")
+        for edge, vertex in self.backward_edges.items():
+            print(f"  Backward via Edge {edge.id} to Vertex {vertex.id}")
+
     def get_outward_nodes(self):
         return [edge.end for edge in self.onward_edges.values()]
     
