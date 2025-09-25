@@ -67,7 +67,7 @@ def bin_edges_by_lat_lon():
     edges_binned_matrix = [[[] for _ in range(n_lon_bins)] for _ in range(n_lat_bins)]
 
     for edge in tqdm(Edge.edge_dict.values(), desc="Binning edges by lat/lon"):
-        points = [(edge.start.lat, edge.start.lon)] + edge.non_vertex_nodes + [(edge.end.lat, edge.end.lon)]
+        points = [(edge.start.lat, edge.start.lon)] + [(lat, lon) for lat, lon, _ in edge.non_vertex_nodes] + [(edge.end.lat, edge.end.lon)]
         bins_covered = set()
         # Bin for explicit points
         for lat, lon in points:
