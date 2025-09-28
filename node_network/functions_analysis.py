@@ -1,9 +1,11 @@
 from classes import Vertex, Edge
 from tqdm import tqdm
 from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from functions_misc import get_bin_indices
 import math
 
-def find_networks(vertices):
+def find_networks():
+    vertices = list(Vertex.vertex_dict.values())
     visited = set()
     networks = []
     for v in vertices:
@@ -15,7 +17,8 @@ def find_networks(vertices):
                 if curr not in visited:
                     visited.add(curr)
                     network.add(curr)
-                    stack.extend([v for v in curr.neighbors.values() if v not in visited])
+                    stack.extend([neighbor for neighbor in curr.get_outward_nodes() if neighbor not in visited])
+                    stack.extend([neighbor for neighbor in curr.get_backward_nodes() if neighbor not in visited])
             networks.append(network)
 
     print(f"Number of networks (connected components): {len(networks)}")
@@ -43,74 +46,61 @@ def filter_non_largest_network(networks):
             to_remove_e.append(eid)
     for eid in tqdm(to_remove_e, desc="Deleting edges"):
         del Edge.edge_dict[eid]
-    # Remove neighbors not in largest network
-    for v in tqdm(Vertex.vertex_dict.values(), desc="Filtering neighbors"):
-        v.neighbors = {e: n for e, n in v.neighbors.items() if n in largest_network and e.start in largest_network and e.end in largest_network}
 
 
-def get_bin_indices(lat, lon):
-    if not (LAT_MIN <= lat < LAT_MAX and LON_MIN <= lon < LON_MAX):
-        return None
-    lat_idx = int((lat - LAT_MIN) / LAT_BIN_SIZE)
-    lon_idx = int((lon - LON_MIN) / LON_BIN_SIZE)
-    return lat_idx, lon_idx
 
-def bin_edges_by_lat_lon():
+def get_edges_near_coordinate(lat: float, lon: float, radius_bins: int = 1) -> list:
     """
-    Returns a 2D matrix (list of lists) where each cell contains a list of edges that have at least one point (start, end, or non-vertex node)
-    within the corresponding lat/lon bin. Points outside the configured bounds are ignored.
+    Get all edges within a radius of bins around a coordinate using the new bin system.
+    
+    Args:
+        lat, lon: Target coordinate
+        radius_bins: Number of bins to search in each direction (default 1 = 3x3 area)
+    
+    Returns:
+        List of Edge objects near the coordinate
     """
-    # Compute number of bins
-    n_lat_bins = math.ceil((LAT_MAX - LAT_MIN) / LAT_BIN_SIZE)
-    n_lon_bins = math.ceil((LON_MAX - LON_MIN) / LON_BIN_SIZE)
-    # Initialize edges_binned_matrix
-    edges_binned_matrix = [[[] for _ in range(n_lon_bins)] for _ in range(n_lat_bins)]
+    center_bin = get_bin_indices(lat, lon)
+    if center_bin is None:
+        return []
+    
+    center_lat_idx, center_lon_idx = center_bin
+    nearby_edges = set()
+    
+    for lat_offset in range(-radius_bins, radius_bins + 1):
+        for lon_offset in range(-radius_bins, radius_bins + 1):
+            search_lat_idx = center_lat_idx + lat_offset
+            search_lon_idx = center_lon_idx + lon_offset
+            
+            edges_in_bin = Edge.get_edges_in_bin(search_lat_idx, search_lon_idx)
+            nearby_edges.update(edges_in_bin)
+    
+    return list(nearby_edges)
 
-    for edge in tqdm(Edge.edge_dict.values(), desc="Binning edges by lat/lon"):
-        points = [(edge.start.lat, edge.start.lon)] + [(lat, lon) for lat, lon, _ in edge.non_vertex_nodes] + [(edge.end.lat, edge.end.lon)]
-        bins_covered = set()
-        # Bin for explicit points
-        for lat, lon in points:
-            idx = get_bin_indices(lat, lon)
-            if idx is not None:
-                bins_covered.add(idx)
-        # Bin for all bins the edge passes through (rasterize each segment)
-        for i in range(len(points) - 1):
-            lat0, lon0 = points[i]
-            lat1, lon1 = points[i+1]
-            idx0 = get_bin_indices(lat0, lon0)
-            idx1 = get_bin_indices(lat1, lon1)
-            if idx0 is None or idx1 is None:
-                continue
-            # DDA (Digital Differential Analyzer) grid traversal
-            n_steps = max(abs(idx1[0] - idx0[0]), abs(idx1[1] - idx0[1]), 1)
-            for step in range(n_steps + 1):
-                frac = step / n_steps
-                lat = lat0 + frac * (lat1 - lat0)
-                lon = lon0 + frac * (lon1 - lon0)
-                idx = get_bin_indices(lat, lon)
-                if idx is not None:
-                    bins_covered.add(idx)
-        for lat_idx, lon_idx in bins_covered:
-            edges_binned_matrix[lat_idx][lon_idx].append(edge)
-
-    return edges_binned_matrix
-
-def bin_vertices_by_lat_lon():
+def get_vertices_near_coordinate(lat: float, lon: float, radius_bins: int = 1) -> list:
     """
-    Returns a 2D matrix (list of lists) where each cell contains a list of vertices that fall within the corresponding lat/lon bin.
-    Points outside the configured bounds are ignored.
+    Get all vertices within a radius of bins around a coordinate using the new bin system.
+    
+    Args:
+        lat, lon: Target coordinate
+        radius_bins: Number of bins to search in each direction (default 1 = 3x3 area)
+    
+    Returns:
+        List of Vertex objects near the coordinate
     """
-    # Compute number of bins
-    n_lat_bins = math.ceil((LAT_MAX - LAT_MIN) / LAT_BIN_SIZE)
-    n_lon_bins = math.ceil((LON_MAX - LON_MIN) / LON_BIN_SIZE)
-    # Initialize vertices_binned_matrix
-    vertices_binned_matrix = [[[] for _ in range(n_lon_bins)] for _ in range(n_lat_bins)]
-
-    for v in tqdm(Vertex.vertex_dict.values(), desc="Binning vertices by lat/lon"):
-        idx = get_bin_indices(v.lat, v.lon)
-        if idx is not None:
-            lat_idx, lon_idx = idx
-            vertices_binned_matrix[lat_idx][lon_idx].append(v)
-
-    return vertices_binned_matrix
+    center_bin = get_bin_indices(lat, lon)
+    if center_bin is None:
+        return []
+    
+    center_lat_idx, center_lon_idx = center_bin
+    nearby_vertices = set()
+    
+    for lat_offset in range(-radius_bins, radius_bins + 1):
+        for lon_offset in range(-radius_bins, radius_bins + 1):
+            search_lat_idx = center_lat_idx + lat_offset
+            search_lon_idx = center_lon_idx + lon_offset
+            
+            vertices_in_bin = Vertex.get_vertices_in_bin(search_lat_idx, search_lon_idx)
+            nearby_vertices.update(vertices_in_bin)
+    
+    return list(nearby_vertices)

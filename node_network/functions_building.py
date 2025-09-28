@@ -5,12 +5,10 @@ from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZ
 from tqdm import tqdm
 
 def build_graph():
-    # Clear existing data
-    Vertex.vertex_dict.clear()
-    Vertex._id_counter = 1
-    Edge.edge_dict.clear()
-    Edge._id_counter = 0
+    Vertex.clear_all()
+    Edge.clear_all()
 
+    # Clear existing data using consolidated helpers
     with open('./cleaned_data/osm_nodes_output.json', 'r', encoding='utf-8') as f:
         nodes_dict = json.load(f)
     with open('./cleaned_data/osm_roads_output.json', 'r', encoding='utf-8') as f:
@@ -104,6 +102,11 @@ def build_graph():
                     # Vertex not found on current edge (might have been split already)
                     break
 
+    # Print max id for edges and vertices
+    max_vertex_id = max(Vertex.vertex_dict.keys(), default=0)
+    max_edge_id = max(Edge.edge_dict.keys(), default=0)
+    print(f"Max vertex ID: {max_vertex_id}, Max edge ID: {max_edge_id}")    
+    
     print(f"Graph construction complete!")
     print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
     
