@@ -64,6 +64,7 @@ class Vertex:
         self.onward_edges = {}
         self.backward_edges = {}
         Vertex.vertex_dict[self.id] = self
+        self.parent_edge = None
         
         # Determine & record temporary status
         self.is_temporary = bool(temporary)
@@ -167,7 +168,7 @@ class Edge:
             edge.delete_edge()
         cls.temporary_edges.clear()
 
-    def __init__(self, start_vertex: Vertex, end_vertex: Vertex, non_vertex_nodes: list[Tuple[float, float, int]], type: str, oneway: bool):
+    def __init__(self, start_vertex: Vertex, end_vertex: Vertex, non_vertex_nodes: list[Tuple[float, float, int]], type: str, oneway: bool, parent_edge=None):
         self.start = start_vertex  # Vertex object
         self.end = end_vertex      # Vertex object
         self.non_vertex_nodes = non_vertex_nodes  # List of (lat, lon, id) tuples for non-vertex nodes
@@ -175,6 +176,10 @@ class Edge:
         self.oneway = oneway
         self.length = self.calculate_length()
         self.detached = False  # Boolean flag for detachment status
+        if parent_edge is None:
+            self.parent_edge = self
+        else:
+            self.parent_edge = parent_edge
 
         self.id = Edge._id_counter
         Edge.edge_dict[self.id] = self
@@ -217,6 +222,10 @@ class Edge:
         edge2 = Edge(vertex, self.end, self.non_vertex_nodes[found_idx+1:], self.type, self.oneway)
 
         if temporary:
+            edge1.parent_edge = self.parent_edge
+            edge2.parent_edge = self.parent_edge
+            vertex.parent_edge = self.parent_edge
+
             Edge.temporary_edges.add(edge1)
             Edge.temporary_edges.add(edge2)
             if self in Edge.temporary_edges:
