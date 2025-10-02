@@ -16,7 +16,7 @@ logging.basicConfig(
 COMPARE_STATES = True
 
 if __name__ == "__main__":
-    build_graph()
+    build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
     
     networks = find_networks()
     filter_non_largest_network(networks)

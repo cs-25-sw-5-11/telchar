@@ -4,14 +4,14 @@ from classes import Vertex, Edge
 from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from tqdm import tqdm
 
-def build_graph():
+def build_graph(nodes_file, roads_file):
     Vertex.clear_all()
     Edge.clear_all()
 
     # Clear existing data using consolidated helpers
-    with open('./cleaned_data/osm_nodes_output.json', 'r', encoding='utf-8') as f:
+    with open(nodes_file, 'r', encoding='utf-8') as f:
         nodes_dict = json.load(f)
-    with open('./cleaned_data/osm_roads_output.json', 'r', encoding='utf-8') as f:
+    with open(roads_file, 'r', encoding='utf-8') as f:
         roads_dict = json.load(f)
     
     # Convert dict to list of roads for processing
