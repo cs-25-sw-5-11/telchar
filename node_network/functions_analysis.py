@@ -3,6 +3,20 @@ from tqdm import tqdm
 from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from functions_misc import get_bin_indices
 import math
+import pandas as pd
+
+def extract_lats_lons_for_trip(trip_file, trip_id):
+    # Load and filter trip data
+    df = pd.read_csv(f'cleaned_data/{trip_file}')
+
+    if 'trip_id' in df.columns:
+        group = df[df['trip_id'] == trip_id]
+        lats = group['latitude'].tolist()
+        lons = group['longitude'].tolist()
+    else:
+        raise ValueError(f"Column 'trip_id' not found in {trip_file}")
+    
+    return lats, lons
 
 def find_networks():
     vertices = list(Vertex.vertex_dict.values())

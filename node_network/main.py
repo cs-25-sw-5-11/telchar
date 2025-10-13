@@ -1,6 +1,6 @@
 from classes import Vertex, Edge
 from functions_building import build_graph
-from functions_analysis import find_networks, filter_non_largest_network
+from functions_analysis import find_networks, filter_non_largest_network, extract_lats_lons_for_trip
 from functions_plotting import plot_networks, plot_directed_graph
 from functions_mapping import process_trip, project_trip_coordinates_onto_edges, all_pairs_network_distances_between_layers
 from functions_misc import restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states
@@ -30,7 +30,8 @@ if __name__ == "__main__":
 
     for trip_file in ['trips_150103.csv']:
         for trip_id in [6]:
-            data_output_dict = process_trip(trip_file, trip_id)
+            lats, lons = extract_lats_lons_for_trip(trip_file, trip_id)
+            data_output_dict = process_trip(lats, lons, max_dist=MAX_DIST)
             best_path = viterbi_algorithm(data_output_dict)
             print(best_path)
             for vertex in best_path:

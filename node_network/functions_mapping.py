@@ -198,31 +198,7 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
     
     return projected_vertices
 
-def project_trip_coordinates_onto_edges(trip_file, trip_id, cell_range=0, max_dist=float('inf'), debug: bool=True):
-    """
-    Project trip coordinates onto the network, creating temporary vertices as needed.
-    Each point is projected onto the network as it exists after all previous points have been processed.
-    
-    Args:
-        trip_id: ID of the trip to process
-        trip_file: CSV file containing trip data
-        cell_range: Number of bins to search in each direction (default 0 = corner-based)
-        max_dist: Maximum distance for projection (in meters)
-    
-    Returns:
-        List of lists, where each inner list contains vertices (temporary or existing) 
-        that the corresponding trip point was projected onto
-    """
-    # Load and filter trip data
-    df = pd.read_csv(f'cleaned_data/{trip_file}')
-
-    if 'trip_id' in df.columns:
-        group = df[df['trip_id'] == trip_id]
-        lats = group['latitude'].tolist()
-        lons = group['longitude'].tolist()
-    else:
-        raise ValueError(f"Column 'trip_id' not found in {trip_file}")
-
+def project_trip_coordinates_onto_edges(lats, lons, cell_range=0, max_dist=float('inf'), debug: bool=True):
     # Process each trip point sequentially
     results = []  # List of lists of vertices
     
@@ -239,7 +215,7 @@ def project_trip_coordinates_onto_edges(trip_file, trip_id, cell_range=0, max_di
             print(f"  Created/found {len(projected_vertices)} vertices for this trip point")
 
     if debug:
-        print(f"Trip projection for {trip_id} in {trip_file} complete. Created {len(Vertex.temporary_vertices)} temporary vertices")
+        print(f"Trip projection complete. Created {len(Vertex.temporary_vertices)} temporary vertices")
     return results
 
 def find_or_create_vertex_at_projection(proj_lat, proj_lon, tolerance=1e-9):
@@ -312,8 +288,8 @@ def generate_network_distances_dict(vertex_layers):
 
     return data_output_dict
 
-def process_trip(trip_file, trip_id, cell_range=0, max_dist=50):
-    vertex_layers = project_trip_coordinates_onto_edges(trip_file=trip_file, trip_id=trip_id,
+def process_trip(lats, lons, cell_range=0, max_dist=50):
+    vertex_layers = project_trip_coordinates_onto_edges(lats, lons,
                                                         cell_range=cell_range, max_dist=max_dist)
     data_output_dict = generate_network_distances_dict(vertex_layers)
 
