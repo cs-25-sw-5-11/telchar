@@ -271,31 +271,33 @@ def all_pairs_network_distances_between_layers(layer1, layer2):
     results = {}
     layer2_ids = set(v.id for v in layer2)
     for v1 in layer1:
-        # Dijkstra's algorithm from v1, with early stopping
-        visited = set()
-        found_layer2 = set()
-        heap = [(0, v1)]  # (distance, vertex)
-        dists = {v1.id: 0}
-        while heap and len(found_layer2) < len(layer2_ids):
-            dist_u, u = heapq.heappop(heap)
-            if u.id in visited:
-                continue
-            visited.add(u.id)
-            if u.id in layer2_ids:
-                found_layer2.add(u.id)
-            # Only traverse onward edges (following directed graph structure)
-            for edge, neighbor in u.onward_edges.items():
-                if neighbor.id not in visited:
-                    alt = dist_u + edge.length
-                    if alt < dists.get(neighbor.id, float('inf')):
-                        dists[neighbor.id] = alt
-                        heapq.heappush(heap, (alt, neighbor))
+        dists = dijkstras_algorithm_with_early_stopping(v1, layer2_ids)
         # Collect distances to all layer2 vertices
         result_row = {}
         for v2 in layer2:
             result_row[v2] = dists.get(v2.id, float('inf'))
         results[v1] = result_row
     return results
+
+def dijkstras_algorithm_with_early_stopping(start_vertex, target_vertices):
+    visited = set()
+    found_layer2 = set()
+    heap = [(0, start_vertex)]  # (distance, vertex)
+    dists = {start_vertex.id: 0}
+    while heap and len(found_layer2) < len(target_vertices):
+        dist_u, u = heapq.heappop(heap)
+        if u.id in visited:
+            continue
+        visited.add(u.id)
+        if u.id in target_vertices:
+            found_layer2.add(u.id)
+        for edge, neighbor in u.onward_edges.items():
+            if neighbor.id not in visited:
+                alt = dist_u + edge.length
+                if alt < dists.get(neighbor.id, float('inf')):
+                    dists[neighbor.id] = alt
+                    heapq.heappush(heap, (alt, neighbor))
+    return dists
 
 def generate_network_distances_dict(vertex_layers):    
     data_output_dict = {     }
