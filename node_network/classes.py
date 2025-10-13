@@ -176,6 +176,7 @@ class Edge:
         self.oneway = oneway
         self.length = self.calculate_length()
         self.detached = False  # Boolean flag for detachment status
+        self.highlighted = False
         if parent_edge is None:
             self.parent_edge = self
         else:

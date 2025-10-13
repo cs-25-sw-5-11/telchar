@@ -275,6 +275,68 @@ def dijkstras_algorithm_with_early_stopping(start_vertex, target_vertices):
                     heapq.heappush(heap, (alt, neighbor))
     return dists
 
+def find_shortest_edge_path(start_vertex, end_vertex):
+    """
+    Find the shortest path between two vertices using Dijkstra's algorithm.
+    Only traverses onward edges (respects directed graph structure).
+    
+    Args:
+        start_vertex: Vertex object to start from
+        end_vertex: Vertex object to reach
+    
+    Returns:
+        tuple: (total_distance, path_edges) where:
+            - total_distance: float, sum of edge lengths along shortest path
+            - path_edges: list of Edge objects traversed in order
+        Returns (float('inf'), []) if no path exists.
+    """
+    import heapq
+    
+    if start_vertex == end_vertex:
+        return (0.0, [])
+    
+    # Dijkstra's algorithm with path tracking
+    visited = set()
+    heap = [(0, start_vertex)]  # (distance, vertex)
+    distances = {start_vertex.id: 0}
+    previous = {}  # Maps vertex_id -> (previous_vertex, edge_used)
+    
+    while heap:
+        current_dist, current_vertex = heapq.heappop(heap)
+        
+        if current_vertex.id in visited:
+            continue
+            
+        visited.add(current_vertex.id)
+        
+        # Found target vertex
+        if current_vertex == end_vertex:
+            # Reconstruct path by backtracking
+            path_edges = []
+            current = end_vertex
+            
+            while current.id in previous:
+                prev_vertex, edge_used = previous[current.id]
+                path_edges.append(edge_used)
+                current = prev_vertex
+            
+            # Reverse to get path from start to end
+            path_edges.reverse()
+            return (current_dist, path_edges)
+        
+        # Explore neighbors via onward edges
+        for edge, neighbor in current_vertex.onward_edges.items():
+            if neighbor.id not in visited and not edge.detached:
+                alt_dist = current_dist + edge.length
+                
+                if alt_dist < distances.get(neighbor.id, float('inf')):
+                    distances[neighbor.id] = alt_dist
+                    previous[neighbor.id] = (current_vertex, edge)
+                    heapq.heappush(heap, (alt_dist, neighbor))
+    
+    # No path found
+    return (float('inf'), [])
+
 def generate_network_distances_dict(vertex_layers):    
     data_output_dict = {     }
 
