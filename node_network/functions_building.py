@@ -109,5 +109,3 @@ def build_graph(nodes_file, roads_file):
     
     print(f"Graph construction complete!")
     print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
-    
-    return Vertex.vertex_dict, Edge.edge_dict
