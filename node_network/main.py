@@ -4,6 +4,7 @@ from functions_analysis import find_networks, filter_non_largest_network
 from functions_plotting import plot_networks, plot_directed_graph
 from functions_mapping import process_trip, project_trip_coordinates_onto_edges, all_pairs_network_distances_between_layers
 from functions_misc import restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states
+from viterbi import viterbi_algorithm
 import matplotlib.pyplot as plt
 import logging
 
@@ -25,15 +26,16 @@ if __name__ == "__main__":
         # Capture original state for later comparison
         original_state = capture_network_state()
 
-    # Use new object-oriented approach - no need to build matrices
-    vertex_layers = project_trip_coordinates_onto_edges(trip_id=6, trip_file='trips_150103.csv',
-                                                        cell_range=0, max_dist=50)
-
     # print(all_pairs_network_distances_between_layers(vertex_layers[0], vertex_layers[1]))    
 
     for trip_file in ['trips_150103.csv']:
         for trip_id in [6]:
-            process_trip(trip_file, trip_id)
+            data_output_dict = process_trip(trip_file, trip_id)
+            best_path = viterbi_algorithm(data_output_dict)
+            print(best_path)
+            for vertex in best_path:
+                print(Vertex.vertex_dict[vertex])
+            restore_network_to_original_state()
 
     # Plot as usual
     # plot_networks(vertex_layers=vertex_layers, highlight_lat=45.7485, highlight_lon=126.6905, show_densest_bin=False)
@@ -42,7 +44,6 @@ if __name__ == "__main__":
 
 
     if COMPARE_STATES:
-        restore_network_to_original_state()
         # Validate integrity after restoration
         restored_state = capture_network_state()
         compare_network_states(original_state, restored_state)

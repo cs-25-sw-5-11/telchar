@@ -322,4 +322,4 @@ def process_trip(trip_file, trip_id, cell_range=0, max_dist=50):
     with open(output_path, 'w') as f:
         json.dump(data_output_dict, f, indent=4)
 
-    restore_network_to_original_state()
+    return data_output_dict
