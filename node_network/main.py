@@ -14,7 +14,12 @@ logging.basicConfig(
     datefmt="%H:%M:%S"
 )
 
+# Suppress matplotlib font manager debug messages
+logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+logging.getLogger('PIL.PngImagePlugin').setLevel(logging.WARNING)
+
 COMPARE_STATES = True
+MAX_DIST = 50
 
 if __name__ == "__main__":
     build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
@@ -50,8 +55,10 @@ if __name__ == "__main__":
     # Plot as usual
     # plot_networks(vertex_layers=vertex_layers, highlight_lat=45.7485, highlight_lon=126.6905, show_densest_bin=False)
     # plot_networks()
-    # plot_directed_graph(lat_min=45.72, lat_max=45.77, lon_min=126.72, lon_max=126.75)
-
+    plot_directed_graph(lat_min=45.62, lat_max=45.77, lon_min=126.65, lon_max=126.75,
+                        trip_point_lats=lats, trip_point_lons=lons, max_dist=MAX_DIST,
+                        best_path_vertex_coords=best_path_vertex_coords)
+    
 
     if COMPARE_STATES:
         # Validate integrity after restoration

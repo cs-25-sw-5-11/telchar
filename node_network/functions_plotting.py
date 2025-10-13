@@ -93,7 +93,9 @@ def plot_networks(results=None, vertex_layers=None, highlight_lat=None, highligh
     plt.tight_layout()
     plt.show()
 
-def plot_directed_graph(lat_min=None, lat_max=None, lon_min=None, lon_max=None):
+def plot_directed_graph(lat_min=None, lat_max=None, lon_min=None, lon_max=None, 
+                        trip_point_lats=None, trip_point_lons=None, max_dist=None,
+                        best_path_vertex_coords=None, show_ID_labels=False):
     """
     Plot the directed graph with optional geographic filtering using spatial bins for efficiency.
     
@@ -242,9 +244,11 @@ def plot_directed_graph(lat_min=None, lat_max=None, lon_min=None, lon_max=None):
                 label_x = lons[mid_idx]
                 label_y = lats[mid_idx]
 
-            plt.text(label_x, label_y, str(edge.id), fontsize=6, ha='center', va='center',
-                    bbox=dict(boxstyle='round,pad=0.2', facecolor='yellow', alpha=0.7),
-                    zorder=5)
+            if show_ID_labels:
+                plt.text(label_x, label_y, str(edge.id), fontsize=6, ha='center', va='center',
+                        bbox=dict(boxstyle='round,pad=0.2', facecolor='yellow', alpha=0.7),
+                        zorder=5)
+                
 
     # Plot vertices (vertices_to_plot was already collected above)
     black_lats, black_lons = [], []
@@ -256,11 +260,40 @@ def plot_directed_graph(lat_min=None, lat_max=None, lon_min=None, lon_max=None):
         black_lats.append(v.lat)
         black_lons.append(v.lon)
         
-        plt.text(v.lon, v.lat, str(v.id), fontsize=6, ha='left', va='bottom',
-                bbox=dict(boxstyle='round,pad=0.2', facecolor='lightblue', alpha=0.7),
-                zorder=5)
+        if show_ID_labels:
+            plt.text(v.lon, v.lat, str(v.id), fontsize=6, ha='left', va='bottom',
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='lightblue', alpha=0.7),
+                    zorder=5)
     
     plt.scatter(black_lons, black_lats, c='black', s=5, zorder=3, label='Network')
+
+    for edge in tqdm(edges_to_plot, desc="Highlighting best path edges"):
+        if not edge.highlighted:
+            continue
+
+        lats = [edge.start.lat] + [lat for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lat]
+        lons = [edge.start.lon] + [lon for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lon]
+        
+        plt.plot(lons, lats, color='blue', zorder=3, linewidth=1, alpha=0.7)
+
+    if best_path_vertex_coords is not None and len(best_path_vertex_coords) >= 2:
+        for i, best_path_vertex in enumerate(best_path_vertex_coords):
+            plt.scatter(best_path_vertex[1], best_path_vertex[0], marker='x', color='green', s=25, zorder=10)
+            plt.text(best_path_vertex[1], best_path_vertex[0], str(i+1), fontsize=8, ha='right', va='bottom',
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='green', alpha=0.7),
+                    zorder=11)
+
+    if trip_point_lats is not None and trip_point_lons is not None:
+        plt.scatter(trip_point_lons, trip_point_lats, color='orange', s=10, zorder=13)
+        for i in range(len(trip_point_lats)):
+            plt.text(trip_point_lons[i], trip_point_lats[i], f'Point {i+1}', fontsize=8, ha='right', va='bottom',
+                    bbox=dict(boxstyle='round,pad=0.2', facecolor='orange', alpha=0.7),
+                    zorder=12)
+        # Plot circle corresponding to max_dist around each trip point
+        if max_dist is not None and max_dist > 0:
+            for lat, lon in zip(trip_point_lats, trip_point_lons):
+                circle = plt.Circle((lon, lat), max_dist / 111320, color='orange', fill=False, linestyle='--', alpha=0.5, zorder=11)
+                plt.gca().add_artist(circle)
 
     plt.xlabel('Longitude')
     plt.ylabel('Latitude')
