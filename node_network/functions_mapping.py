@@ -180,7 +180,7 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
             valid_projections.append((edge, proj_lat, proj_lon, dist_m, seg_idx))
     
     if not valid_projections:
-        print(f"  No suitable projections found within {max_dist}m")
+        logger.warning("No suitable projections found within max distance")
         return []
     
     # Sort projections by distance (closest first)
@@ -198,7 +198,7 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
     
     return projected_vertices
 
-def project_trip_coordinates_onto_edges(lats, lons, cell_range=0, max_dist=float('inf'), debug: bool=True):
+def project_trip_coordinates_onto_edges(lats, lons, cell_range=0, max_dist=float('inf'), debug: bool=False):
     # Process each trip point sequentially
     results = []  # List of lists of vertices
     

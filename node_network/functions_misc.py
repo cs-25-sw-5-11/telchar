@@ -1,4 +1,7 @@
 from math import radians, sin, cos, sqrt, atan2
+import logging
+
+logger = logging.getLogger(__name__)
 
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371000
@@ -37,7 +40,7 @@ def restore_network_to_original_state(debug: bool=False):
     """
     from classes import Vertex, Edge
     
-    print("Restoring network to original state...")
+    logger.debug("Restoring network to original state...")
     # Count current state for reporting
     initial_temp_vertices = len(Vertex.temporary_vertices)
     initial_temp_edges = len(Edge.temporary_edges)
@@ -73,10 +76,10 @@ def restore_network_to_original_state(debug: bool=False):
     remaining_detached_edges = len(Edge.detached_edges)
     
     if remaining_temp_vertices == 0 and remaining_temp_edges == 0 and remaining_detached_edges == 0:
-        print("Network successfully restored to original state")
+        logger.debug("Network successfully restored to original state")
         return True
     else:
-        print(f"Warning: Cleanup incomplete - {remaining_temp_vertices} temp vertices, {remaining_temp_edges} temp edges, {remaining_detached_edges} detached edges remain")
+        logger.warning("Warning: Cleanup incomplete - some temporary elements remain")
         return False
 
 def validate_network_integrity():
@@ -89,7 +92,7 @@ def validate_network_integrity():
     """
     from classes import Vertex, Edge
     
-    print("Validating network integrity...")
+    logger.debug("Validating network integrity...")
     issues = []
     
     # Check all edges have valid vertices
