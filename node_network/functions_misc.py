@@ -11,6 +11,18 @@ def haversine(lat1, lon1, lat2, lon2):
     a = sin(dphi/2)**2 + cos(phi1)*cos(phi2)*sin(dlambda/2)**2
     return 2 * R * atan2(sqrt(a), sqrt(1 - a))
 
+def get_time_index(timestamp: int, reference: int, interval: int) -> int:
+    """
+    Convert a UNIX timestamp to a time index representing the number of a set minute intervals since a reference time.
+    
+    Args:
+        timestamp: UNIX timestamp (seconds since epoch)
+        reference: Reference UNIX timestamp (e.g., start of day)
+
+    Returns:
+        Time index (int) representing the number of 5-minute intervals since the reference time.
+    """
+    return (timestamp - reference) // interval
 def get_bin_indices(lat: float, lon: float):
     """Calculate bin indices for given latitude and longitude coordinates.
     
