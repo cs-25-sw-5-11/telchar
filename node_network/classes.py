@@ -82,12 +82,18 @@ class Vertex:
         for edge, vertex in self.backward_edges.items():
             logger.info("  Backward via Edge %s to Vertex %s", edge.id, vertex.id)
 
-    def get_outward_nodes(self):
+    def get_outward_edges(self):
+        return list(self.onward_edges.keys())
+    
+    def get_backward_edges(self):
+        return list(self.backward_edges.keys())
+    
+    def get_outward_vertices(self):
         return list(self.onward_edges.values())
-    
-    def get_backward_nodes(self):
+
+    def get_backward_vertices(self):
         return list(self.backward_edges.values())
-    
+
     def delete_vertex(self):
         """Delete this vertex from all data structures."""
         # Remove from vertex_dict
