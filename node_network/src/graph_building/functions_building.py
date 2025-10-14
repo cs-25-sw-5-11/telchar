@@ -3,7 +3,7 @@ from collections import Counter
 from classes.classes import Vertex, Edge
 from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from tqdm import tqdm
-
+from .split_edges import process_edges_to_split
 
 
 def convert_json_roads_to_list(roads_dict) -> list:
@@ -92,32 +92,7 @@ def build_graph(nodes_file, roads_file):
     print("Step 4: Splitting edges at intersection points...")
     # Step 4: Split edges where non-vertex nodes should actually be vertices
     edges_to_process = list(Edge.edge_dict.values())  # Get current edges
-    
-    for original_edge in tqdm(edges_to_process, desc="Processing edges"):
-        # Find all vertices that need to be split on this edge
-        vertices_to_split = []
-        for lat, lon, node_id in original_edge.non_vertex_nodes:
-            if str(node_id) in should_be_vertices:
-                # Convert to int for consistent vertex lookup
-                int_node_id = int(node_id) if isinstance(node_id, str) else node_id
-                vertex = Vertex.vertex_dict[int_node_id]
-                vertices_to_split.append(vertex)
-        
-        # Split the edge at all vertices (this handles multiple splits correctly)
-        if vertices_to_split:
-            current_edge = original_edge
-            for vertex in vertices_to_split:
-                try:
-                    result = current_edge.split_edge_along_vertex(vertex, temporary=False)
-                    if result is not None:
-                        edge1, edge2 = result
-                        # Continue with the second edge for further splits
-                        current_edge = edge2
-                    # If result is None, the vertex was already at start/end, so no split needed
-                except ValueError:
-                    # Vertex not found on current edge (might have been split already)
-                    break
-
+    process_edges_to_split(edges_to_process,should_be_vertices)
     # Print max id for edges and vertices
     max_vertex_id = max(Vertex.vertex_dict.keys(), default=0)
     max_edge_id = max(Edge.edge_dict.keys(), default=0)
