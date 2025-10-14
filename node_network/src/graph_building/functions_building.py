@@ -63,6 +63,7 @@ def print_stats():
     return
 
 def build_graph(nodes_file, roads_file):
+    """Main function for function_building"""
     # Clear Vertex and edge dictionaries
     Vertex.clear_all()
     Edge.clear_all()
