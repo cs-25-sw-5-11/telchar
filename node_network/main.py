@@ -61,6 +61,7 @@ if __name__ == "__main__":
                 # Time readout.
                 start_time = datetime.now()
                 # Write edge traversals data to json file.
+                print(f"Writing edge traversal data before processing trip_id {trip_id}")
                 writeout_traversals_to_json(file_path='edge_traversals.json', 
                                             edge_items=list(Edge.edge_dict.values()))
                 end_time = datetime.now()
@@ -110,6 +111,7 @@ if __name__ == "__main__":
 
     # Final cleanup.
     restore_network_to_original_state()
+    print("Final writeout of edge traversal data...")
     writeout_traversals_to_json(file_path='edge_traversals.json', 
                                 edge_items=list(Edge.edge_dict.values()))
 
