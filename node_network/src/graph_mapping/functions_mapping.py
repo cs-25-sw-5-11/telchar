@@ -1,9 +1,9 @@
 import heapq
 import os
 import json
-from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
-from classes import Vertex, Edge
-from functions_misc import get_bin_indices, restore_network_to_original_state
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from classes.classes import Vertex, Edge
+from utils.functions_misc import get_bin_indices, restore_network_to_original_state
 import pandas as pd
 import logging
 

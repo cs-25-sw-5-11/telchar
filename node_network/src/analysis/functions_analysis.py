@@ -1,7 +1,7 @@
-from classes import Vertex, Edge
+from classes.classes import Vertex, Edge
 from tqdm import tqdm
-from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
-from functions_misc import get_bin_indices
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from utils.functions_misc import get_bin_indices
 import math
 import pandas as pd
 

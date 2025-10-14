@@ -21,7 +21,7 @@ def get_bin_indices(lat: float, lon: float):
     Returns:
         Tuple[int, int] or None: (lat_idx, lon_idx) if within bounds, None otherwise
     """
-    from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+    from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
     
     if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX):
         return None
@@ -38,7 +38,7 @@ def restore_network_to_original_state(debug: bool=False):
     
     This ensures the network is identical to its state before any temporary modifications.
     """
-    from classes import Vertex, Edge
+    from classes.classes import Vertex, Edge
     
     logger.debug("Restoring network to original state...")
     # Count current state for reporting
@@ -90,7 +90,7 @@ def validate_network_integrity():
     3. All vertices/edges are properly registered in dictionaries
     4. Bin lookups are consistent
     """
-    from classes import Vertex, Edge
+    from classes.classes import Vertex, Edge
     
     logger.debug("Validating network integrity...")
     issues = []
@@ -142,7 +142,7 @@ def capture_network_state():
     Capture the current state of the network for comparison.
     Returns a dictionary with network statistics and structure.
     """
-    from classes import Vertex, Edge
+    from classes.classes import Vertex, Edge
     
     state = {
         'vertex_count': len(Vertex.vertex_dict),

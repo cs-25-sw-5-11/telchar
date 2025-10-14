@@ -1,7 +1,7 @@
 import json
 from collections import Counter
-from classes import Vertex, Edge
-from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from classes.classes import Vertex, Edge
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from tqdm import tqdm
 
 def build_graph(nodes_file, roads_file):

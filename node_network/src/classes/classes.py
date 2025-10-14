@@ -1,6 +1,6 @@
 from typing import Tuple, Set
-from functions_misc import haversine, get_bin_indices
-from config import METERS_PER_DEGREE
+from utils.functions_misc import haversine, get_bin_indices
+from configs.config import METERS_PER_DEGREE
 from math import sqrt
 import logging
 

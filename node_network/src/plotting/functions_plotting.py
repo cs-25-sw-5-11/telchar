@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from classes import Vertex, Edge
-from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
-from functions_mapping import get_edges_near_coordinates
-from functions_misc import get_bin_indices
+from classes.classes import Vertex, Edge
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from graph_mapping.functions_mapping import get_edges_near_coordinates
+from utils.functions_misc import get_bin_indices
 
 
 def in_largest_network(vertex, largest_network):
