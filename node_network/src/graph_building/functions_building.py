@@ -4,6 +4,18 @@ from classes.classes import Vertex, Edge
 from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from tqdm import tqdm
 
+
+
+def convert_json_to_list(roads_dict) -> list[int]:
+    roads = []
+    for road_id, road_data in roads_dict.items():
+        if 'nodes' in road_data and road_data['nodes']:
+            road_data['id'] = road_id
+            roads.append(road_data)
+    return roads
+
+
+
 def build_graph(nodes_file, roads_file):
     Vertex.clear_all()
     Edge.clear_all()
@@ -15,11 +27,8 @@ def build_graph(nodes_file, roads_file):
         roads_dict = json.load(f)
     
     # Convert dict to list of roads for processing
-    roads = []
-    for road_id, road_data in roads_dict.items():
-        if 'nodes' in road_data and road_data['nodes']:
-            road_data['id'] = road_id
-            roads.append(road_data)
+    roads = convert_json_to_list(roads_dict)
+    
     
     print("Step 1: Creating initial edges and vertices from roads...")
     # Step 1: Create edges and vertices from roads (one edge per road, plus start/end vertices)
@@ -109,3 +118,4 @@ def build_graph(nodes_file, roads_file):
     
     print(f"Graph construction complete!")
     print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
+
