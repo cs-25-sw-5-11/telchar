@@ -3,7 +3,7 @@ from collections import Counter
 from classes.classes import Vertex, Edge
 from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from tqdm import tqdm
-from .split_edges import process_edges_to_split
+from .split_edges_intersection import process_edges_to_split
 
 
 def convert_json_roads_to_list(roads_dict) -> list:
@@ -53,6 +53,15 @@ def convert_point_to_vertex(node_id: str, nodes_dict) -> None:
     Vertex(node_data['lat'], node_data['lon'], int(node_id))
     return
 
+def print_stats():
+    max_vertex_id = max(Vertex.vertex_dict.keys(), default=0)
+    max_edge_id = max(Edge.edge_dict.keys(), default=0)
+    print(f"Max vertex ID: {max_vertex_id}, Max edge ID: {max_edge_id}")    
+    
+    print(f"Graph construction complete!")
+    print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
+    return
+
 def build_graph(nodes_file, roads_file):
     # Clear Vertex and edge dictionaries
     Vertex.clear_all()
@@ -94,10 +103,4 @@ def build_graph(nodes_file, roads_file):
     edges_to_process = list(Edge.edge_dict.values())  # Get current edges
     process_edges_to_split(edges_to_process,should_be_vertices)
     # Print max id for edges and vertices
-    max_vertex_id = max(Vertex.vertex_dict.keys(), default=0)
-    max_edge_id = max(Edge.edge_dict.keys(), default=0)
-    print(f"Max vertex ID: {max_vertex_id}, Max edge ID: {max_edge_id}")    
     
-    print(f"Graph construction complete!")
-    print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
-
