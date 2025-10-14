@@ -44,11 +44,20 @@ def create_edge(road, nodes_dict) -> None:
     Edge(start_vertex, end_vertex, non_vertex_nodes, road_type, oneway)
     return
 
+def convert_point_to_vertex(node_id: str, nodes_dict) -> None:
+    # Don't recreate if already exists
+    if int(node_id) in Vertex.vertex_dict:
+        return
+
+    node_data = nodes_dict[node_id]
+    Vertex(node_data['lat'], node_data['lon'], int(node_id))
+    return
+
 def build_graph(nodes_file, roads_file):
+    # Clear Vertex and edge dictionaries
     Vertex.clear_all()
     Edge.clear_all()
 
-    # Clear existing data using consolidated helpers
     with open(nodes_file, 'r', encoding='utf-8') as f:
         nodes_dict = json.load(f)
     with open(roads_file, 'r', encoding='utf-8') as f:
@@ -56,7 +65,6 @@ def build_graph(nodes_file, roads_file):
     
     # Convert dict to list of roads for processing
     roads = convert_json_roads_to_list(roads_dict)
-    
     
     print("Step 1: Creating initial edges and vertices from roads...")
     # Step 1: Create edges and vertices from roads (one edge per road, plus start/end vertices)
@@ -78,11 +86,8 @@ def build_graph(nodes_file, roads_file):
     print("Step 3: Creating vertex objects for intersection nodes...")
     # Step 3: Create vertex objects for nodes that should be vertices
     for node_id in tqdm(should_be_vertices, desc="Creating vertices"):
-        # Convert to int for consistent vertex lookup
-        int_node_id = int(node_id) if isinstance(node_id, str) else node_id
-        if int_node_id not in Vertex.vertex_dict:  # Don't recreate if already exists
-            node_data = nodes_dict[node_id]
-            Vertex(node_data['lat'], node_data['lon'], int_node_id)
+        convert_point_to_vertex(node_id, nodes_dict)
+        
     
     print("Step 4: Splitting edges at intersection points...")
     # Step 4: Split edges where non-vertex nodes should actually be vertices
