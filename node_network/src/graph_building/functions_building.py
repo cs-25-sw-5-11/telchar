@@ -6,7 +6,7 @@ from tqdm import tqdm
 from .split_edges_intersection import process_edges_to_split
 
 
-def convert_json_roads_to_list(roads_dict) -> list:
+def convert_json_roads_to_list(roads_dict: dict[str,any]) -> list:
     roads = []
     for road_id, road_data in roads_dict.items():
         if 'nodes' in road_data and road_data['nodes']:
@@ -14,7 +14,7 @@ def convert_json_roads_to_list(roads_dict) -> list:
             roads.append(road_data)
     return roads
 
-def create_edge(road, nodes_dict) -> None:
+def create_edge(road: dict[str,any], nodes_dict: dict[str, dict[str,float]]) -> None:
     nodes = road['nodes']
     if len(nodes) < 2:
         return
@@ -35,16 +35,17 @@ def create_edge(road, nodes_dict) -> None:
     end_vertex = Vertex(end_node_data['lat'], end_node_data['lon'], int(end_node_id))
 
     # All intermediate nodes are non-vertex nodes for now
-    non_vertex_nodes = [
-        (nodes_dict[node_id]['lat'], nodes_dict[node_id]['lon'], int(node_id))
-        for node_id in nodes[1:-1]
-    ]
+    non_vertex_nodes = []
+    for node_id in nodes[1:-1]:
+        node_data = nodes_dict[node_id]
+        non_vertex_nodes.append((node_data['lat'], node_data['lon'], int(node_id)))
+    
     
     # Create the edge
     Edge(start_vertex, end_vertex, non_vertex_nodes, road_type, oneway)
     return
 
-def convert_point_to_vertex(node_id: str, nodes_dict) -> None:
+def convert_point_to_vertex(node_id: str, nodes_dict: dict[str, dict[str,float]]) -> None:
     # Don't recreate if already exists
     if int(node_id) in Vertex.vertex_dict:
         return
@@ -62,7 +63,7 @@ def print_stats():
     print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
     return
 
-def build_graph(nodes_file, roads_file):
+def build_graph(nodes_file: str, roads_file:str):
     """Main function for function_building"""
     # Clear Vertex and edge dictionaries
     Vertex.clear_all()
