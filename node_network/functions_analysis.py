@@ -9,9 +9,9 @@ def find_networks():
     vertices = list(Vertex.vertex_dict.values())
     visited = set()
     networks = []
-    for v in vertices:
-        if v not in visited:
-            stack = [v]
+    for vertex in vertices:
+        if vertex not in visited:
+            stack = [vertex]
             network = set()
             while stack:
                 curr = stack.pop()
