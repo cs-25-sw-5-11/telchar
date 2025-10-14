@@ -191,10 +191,34 @@ class Edge:
         if not self.oneway:
             self.end.onward_edges[self] = self.start
             self.start.backward_edges[self] = self.end
-            
+
+        # Dictionary for storing speeds.
+        self.traversals_data = {}
+
         # Calculate and store bins covered by this edge
         self.bins_covered = self._calculate_bins_covered()
         self._update_bin_lookup()
+
+    def traversals_data_update(self, time_index: int, speed: int, edge_length: int):
+        # Existing entry: update weighted statistics
+        if time_index in self.traversals_data:
+            existing_mean, existing_variance, existing_total_length = self.traversals_data[time_index]
+
+            # Calculate new weighted mean using incremental form (slightly faster)
+            total_weight = existing_total_length + edge_length
+            new_mean = existing_mean + edge_length * (speed - existing_mean) / total_weight
+            
+            # Calculate new weighted variance using Welford's online algorithm for weighted variance
+            # delta1 = x - old_mean, new_mean = old_mean + w2*delta1/(w1+w2)
+            # delta2 = x - new_mean, new_variance = (w1*old_var + w2*delta1*delta2) / (w1+w2)
+            delta1 = speed - existing_mean
+            delta2 = speed - new_mean
+            new_variance = (existing_variance * existing_total_length + edge_length * delta1 * delta2) / total_weight
+
+            self.traversals_data[time_index] = (new_mean, new_variance, total_weight)
+        # New entry: initialize with single data point (variance = 0)
+        else:
+            self.traversals_data[time_index] = (speed, 0.0, edge_length)
 
     def calculate_length(self):
         points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
