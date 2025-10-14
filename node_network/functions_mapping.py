@@ -163,7 +163,7 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
     nearby_edges = get_edges_near_coordinates(lat, lon, cell_range)
     
     if not nearby_edges:
-        print(f"  No edges found near point ({lat}, {lon})")
+        logger.debug(f"No edges found near point ({lat}, {lon})")
         return None
     
     # Find all valid projections within max_dist
@@ -180,7 +180,7 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
             valid_projections.append((edge, proj_lat, proj_lon, dist_m, seg_idx))
     
     if not valid_projections:
-        logger.warning("No suitable projections found within max distance")
+        logger.debug("No suitable projections found within max distance")
         return None
     
     # Sort projections by distance (closest first)
