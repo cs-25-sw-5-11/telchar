@@ -6,7 +6,7 @@ from tqdm import tqdm
 
 
 
-def convert_json_to_list(roads_dict) -> list[int]:
+def convert_json_roads_to_list(roads_dict) -> list:
     roads = []
     for road_id, road_data in roads_dict.items():
         if 'nodes' in road_data and road_data['nodes']:
@@ -14,7 +14,35 @@ def convert_json_to_list(roads_dict) -> list[int]:
             roads.append(road_data)
     return roads
 
+def create_edge(road, nodes_dict) -> None:
+    nodes = road['nodes']
+    if len(nodes) < 2:
+        return
+        
+    road_type = road.get('type', 'unknown')
+    oneway = road.get('oneway', False) is True
+    
+    # Create vertices for start and end of road
+    start_node_id = nodes[0]
+    end_node_id = nodes[-1]
+    
+    # Get node data from nodes_dict using the node ID
+    start_node_data = nodes_dict[start_node_id]
+    end_node_data = nodes_dict[end_node_id]
+    
+    # Constructor automatically returns existing vertex if ID already exists
+    start_vertex = Vertex(start_node_data['lat'], start_node_data['lon'], int(start_node_id))
+    end_vertex = Vertex(end_node_data['lat'], end_node_data['lon'], int(end_node_id))
 
+    # All intermediate nodes are non-vertex nodes for now
+    non_vertex_nodes = [
+        (nodes_dict[node_id]['lat'], nodes_dict[node_id]['lon'], int(node_id))
+        for node_id in nodes[1:-1]
+    ]
+    
+    # Create the edge
+    Edge(start_vertex, end_vertex, non_vertex_nodes, road_type, oneway)
+    return
 
 def build_graph(nodes_file, roads_file):
     Vertex.clear_all()
@@ -27,39 +55,13 @@ def build_graph(nodes_file, roads_file):
         roads_dict = json.load(f)
     
     # Convert dict to list of roads for processing
-    roads = convert_json_to_list(roads_dict)
+    roads = convert_json_roads_to_list(roads_dict)
     
     
     print("Step 1: Creating initial edges and vertices from roads...")
     # Step 1: Create edges and vertices from roads (one edge per road, plus start/end vertices)
     for road in tqdm(roads, desc="Creating initial edges"):
-        nodes = road['nodes']
-        if len(nodes) < 2:
-            continue
-            
-        road_type = road.get('type', 'unknown')
-        oneway = road.get('oneway', False) is True
-        
-        # Create vertices for start and end of road
-        start_node_id = nodes[0]
-        end_node_id = nodes[-1]
-        
-        # Get node data from nodes_dict using the node ID
-        start_node_data = nodes_dict[start_node_id]
-        end_node_data = nodes_dict[end_node_id]
-        
-        # Constructor automatically returns existing vertex if ID already exists
-        start_vertex = Vertex(start_node_data['lat'], start_node_data['lon'], int(start_node_id))
-        end_vertex = Vertex(end_node_data['lat'], end_node_data['lon'], int(end_node_id))
-
-        # All intermediate nodes are non-vertex nodes for now
-        non_vertex_nodes = [
-            (nodes_dict[node_id]['lat'], nodes_dict[node_id]['lon'], int(node_id))
-            for node_id in nodes[1:-1]
-        ]
-        
-        # Create the edge
-        Edge(start_vertex, end_vertex, non_vertex_nodes, road_type, oneway)
+        create_edge(road, nodes_dict)
     
     print("Step 2: Identifying shared nodes...")
     # Step 2: Count node usage to identify which nodes should be vertices
