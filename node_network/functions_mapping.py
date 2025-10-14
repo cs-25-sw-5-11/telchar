@@ -355,7 +355,7 @@ def process_trip(lats, lons, cell_range=0, max_dist=50):
                                                         cell_range=cell_range, max_dist=max_dist)
     data_output_dict = generate_network_distances_dict(vertex_layers)
 
-    output_path = f'peter_fucking_around/output_data/network_distances.json'
+    output_path = f'/output_data/network_distances.json'
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     with open(output_path, 'w') as f:
         json.dump(data_output_dict, f, indent=4)
