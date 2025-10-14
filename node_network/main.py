@@ -66,7 +66,7 @@ if __name__ == "__main__":
                                             edge_items=list(Edge.edge_dict.values()))
                 end_time = datetime.now()
                 time_diff = (end_time - start_time)
-                print(f"Readout time: {time_diff.seconds}.{time_diff.microseconds}")
+                print(f"Writeout at {start_time}, took {time_diff.seconds}.{time_diff.microseconds} seconds.")
 
             try:
                 group = df[df['trip_id'] == trip_id]
