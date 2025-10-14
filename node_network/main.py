@@ -53,6 +53,9 @@ if __name__ == "__main__":
                     continue
 
                 data_output_dict = process_trip(lats, lons, max_dist=MAX_DIST)
+                if data_output_dict is None:
+                    logger.warning(f"Skipping trip_id {trip_id} due to no projected vertices.")
+                    continue
 
                 try:
                     best_path = viterbi_algorithm(data_output_dict)
