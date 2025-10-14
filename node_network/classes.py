@@ -89,13 +89,7 @@ class Vertex:
         return list(self.backward_edges.values())
     
     def delete_vertex(self):
-        """Delete this vertex from all data structures (only valid for true temporary vertices)."""
-        if not getattr(self, 'is_temporary', False):
-            logger.error("Refusing to delete non-temporary vertex %s", self.id)
-            return
-        if self not in Vertex.temporary_vertices:
-            logger.warning("Temporary vertex %s missing from temporary set; continuing with deletion", self.id)
-
+        """Delete this vertex from all data structures."""
         # Remove from vertex_dict
         if self.id in Vertex.vertex_dict:
             del Vertex.vertex_dict[self.id]
@@ -395,7 +389,7 @@ class Edge:
         cls._bin_lookup.clear()
     
     def __repr__(self):
-        return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m, type={self.type}, oneway={self.oneway}, bins={len(self.bins_covered)})"
+        return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m, type={self.type}, oneway={self.oneway}, parent_edge={self.parent_edge.id}, bins_covered={len(self.bins_covered)})"
     def __hash__(self):
         return self.id
     def __eq__(self, other):
