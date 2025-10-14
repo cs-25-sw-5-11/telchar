@@ -1,5 +1,6 @@
 from math import radians, sin, cos, sqrt, atan2
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,27 @@ def get_time_index(timestamp: int, reference: int, interval: int) -> int:
         Time index (int) representing the number of 5-minute intervals since the reference time.
     """
     return (timestamp - reference) // interval
+
+def writeout_traversals_to_json(file_path: str, edge_items):
+    with open(file_path, 'w') as f:
+        f.write('{\n')
+        for i, edge in enumerate(edge_items):
+            # Convert to integers at output time for space efficiency, sorted by time_idx
+            traversals_data_int = {
+                time_idx: (int(mean), int(variance), int(total_length))
+                for time_idx, (mean, variance, total_length) in sorted(edge.traversals_data.items())
+            }
+            
+            edge_data = {
+                'length (cm)': int(edge.length * 100), 
+                'traversals_data': traversals_data_int
+            }
+            f.write(f'\t"{edge.id}": {json.dumps(edge_data)}')
+            if i < len(edge_items) - 1:
+                f.write(',')
+            f.write('\n')
+        f.write('}\n')
+
 def get_bin_indices(lat: float, lon: float):
     """Calculate bin indices for given latitude and longitude coordinates.
     
