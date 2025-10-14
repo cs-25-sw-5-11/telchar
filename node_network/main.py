@@ -29,7 +29,7 @@ PLOT = False
 MAX_DIST = 100
 UNIX_REFERENCE = 1420243200
 TIME_INTERVAL = 300  # 5 minutes in seconds
-WRITEOUT_INTERVAL = 100 # How often to write edge data to file (in number of trips)
+WRITEOUT_INTERVAL = 1000 # How often to write edge data to file (in number of trips)
 
 if __name__ == "__main__":
     build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
@@ -47,8 +47,9 @@ if __name__ == "__main__":
         # Load and filter trip data
         df = pd.read_csv(f'cleaned_data/{trip_file}')
         next_writeout = WRITEOUT_INTERVAL
+        max_trip = df['trip_id'].max()
 
-        for trip_id in tqdm(range(1, 1001), desc=f"Processing trips in {trip_file}"):
+        for trip_id in tqdm(range(1, max_trip + 1), desc=f"Processing trips in {trip_file}"):
             # Reset network state before processing each trip.
             # Here instead of at the end due to possible early continues.
             restore_network_to_original_state()
