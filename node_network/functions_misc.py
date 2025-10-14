@@ -26,12 +26,14 @@ def get_time_index(timestamp: int, reference: int, interval: int) -> int:
     return (timestamp - reference) // interval
 
 def writeout_traversals_to_json(file_path: str, edge_items):
+    from math import sqrt
     with open(file_path, 'w') as f:
         f.write('{\n')
         for i, edge in enumerate(edge_items):
             # Convert to integers at output time for space efficiency, sorted by time_idx
+            # Convert variance to standard deviation for interpretability
             traversals_data_int = {
-                time_idx: (int(mean), int(variance), int(total_length))
+                time_idx: (int(mean), int(sqrt(variance)), int(total_length))
                 for time_idx, (mean, variance, total_length) in sorted(edge.traversals_data.items())
             }
             
