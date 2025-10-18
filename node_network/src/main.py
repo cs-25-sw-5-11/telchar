@@ -1,6 +1,7 @@
 from classes.classes import Vertex, Edge
 from graph_building.functions_building import build_graph
-from analysis.functions_analysis import find_networks, filter_non_largest_network
+from analysis.functions_analysis import filter_non_largest_network
+from analysis.find_networks import find_networks
 from plotting.functions_plotting import plot_networks, plot_directed_graph
 from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
 from utils.functions_misc import get_time_index,writeout_traversals_to_json,restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states

@@ -5,26 +5,10 @@ from utils.functions_misc import get_bin_indices
 import math
 import pandas as pd
 
-def find_networks():
-    vertices = list(Vertex.vertex_dict.values())
-    visited = set()
-    networks = []
-    for vertex in vertices:
-        if vertex not in visited:
-            stack = [vertex]
-            network = set()
-            while stack:
-                curr = stack.pop()
-                if curr not in visited:
-                    visited.add(curr)
-                    network.add(curr)
-                    stack.extend([neighbor for neighbor in curr.get_outward_vertices() if neighbor not in visited])
-                    stack.extend([neighbor for neighbor in curr.get_backward_vertices() if neighbor not in visited])
-            networks.append(network)
 
-    print(f"Number of networks (connected components): {len(networks)}")
 
-    return networks
+
+
 
 def filter_non_largest_network(networks):
     print("Filtering out vertices and edges not belonging to the largest network...")
