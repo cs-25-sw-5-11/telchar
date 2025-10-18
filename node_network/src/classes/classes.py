@@ -82,20 +82,20 @@ class Vertex:
         for edge, vertex in self.backward_edges.items():
             logger.info("  Backward via Edge %s to Vertex %s", edge.id, vertex.id)
 
-    def get_outward_nodes(self):
+    def get_outward_edges(self):
+        return list(self.onward_edges.keys())
+    
+    def get_backward_edges(self):
+        return list(self.backward_edges.keys())
+    
+    def get_outward_vertices(self):
         return list(self.onward_edges.values())
-    
-    def get_backward_nodes(self):
-        return list(self.backward_edges.values())
-    
-    def delete_vertex(self):
-        """Delete this vertex from all data structures (only valid for true temporary vertices)."""
-        if not getattr(self, 'is_temporary', False):
-            logger.error("Refusing to delete non-temporary vertex %s", self.id)
-            return
-        if self not in Vertex.temporary_vertices:
-            logger.warning("Temporary vertex %s missing from temporary set; continuing with deletion", self.id)
 
+    def get_backward_vertices(self):
+        return list(self.backward_edges.values())
+
+    def delete_vertex(self):
+        """Delete this vertex from all data structures."""
         # Remove from vertex_dict
         if self.id in Vertex.vertex_dict:
             del Vertex.vertex_dict[self.id]
@@ -191,10 +191,34 @@ class Edge:
         if not self.oneway:
             self.end.onward_edges[self] = self.start
             self.start.backward_edges[self] = self.end
-            
+
+        # Dictionary for storing speeds.
+        self.traversals_data = {}
+
         # Calculate and store bins covered by this edge
         self.bins_covered = self._calculate_bins_covered()
         self._update_bin_lookup()
+
+    def traversals_data_update(self, time_index: int, speed: int, edge_length: int):
+        # Existing entry: update weighted statistics
+        if time_index in self.traversals_data:
+            existing_mean, existing_variance, existing_total_length = self.traversals_data[time_index]
+
+            # Calculate new weighted mean using incremental form (slightly faster)
+            total_weight = existing_total_length + edge_length
+            new_mean = existing_mean + edge_length * (speed - existing_mean) / total_weight
+            
+            # Calculate new weighted variance using Welford's online algorithm for weighted variance
+            # delta1 = x - old_mean, new_mean = old_mean + w2*delta1/(w1+w2)
+            # delta2 = x - new_mean, new_variance = (w1*old_var + w2*delta1*delta2) / (w1+w2)
+            delta1 = speed - existing_mean
+            delta2 = speed - new_mean
+            new_variance = (existing_variance * existing_total_length + edge_length * delta1 * delta2) / total_weight
+
+            self.traversals_data[time_index] = (new_mean, new_variance, total_weight)
+        # New entry: initialize with single data point (variance = 0)
+        else:
+            self.traversals_data[time_index] = (speed, 0.0, edge_length)
 
     def calculate_length(self):
         points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
@@ -395,7 +419,7 @@ class Edge:
         cls._bin_lookup.clear()
     
     def __repr__(self):
-        return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m, type={self.type}, oneway={self.oneway}, bins={len(self.bins_covered)})"
+        return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m, type={self.type}, oneway={self.oneway}, parent_edge={self.parent_edge.id}, bins_covered={len(self.bins_covered)})"
     def __hash__(self):
         return self.id
     def __eq__(self, other):

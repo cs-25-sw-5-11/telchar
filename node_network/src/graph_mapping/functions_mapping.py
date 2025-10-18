@@ -163,8 +163,8 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
     nearby_edges = get_edges_near_coordinates(lat, lon, cell_range)
     
     if not nearby_edges:
-        print(f"  No edges found near point ({lat}, {lon})")
-        return []
+        logger.debug(f"No edges found near point ({lat}, {lon})")
+        return None
     
     # Find all valid projections within max_dist
     valid_projections = []
@@ -180,8 +180,8 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
             valid_projections.append((edge, proj_lat, proj_lon, dist_m, seg_idx))
     
     if not valid_projections:
-        logger.warning("No suitable projections found within max distance")
-        return []
+        logger.debug("No suitable projections found within max distance")
+        return None
     
     # Sort projections by distance (closest first)
     valid_projections.sort(key=lambda x: x[3])
@@ -208,6 +208,9 @@ def project_trip_coordinates_onto_edges(lats, lons, cell_range=0, max_dist=float
         
         # Project this single point onto the current network state
         projected_vertices = project_single_trip_point(lat, lon, cell_range, max_dist)
+
+        if projected_vertices is None:
+            return None
         
         # Add results and log progress
         results.append(projected_vertices)
@@ -353,11 +356,8 @@ def generate_network_distances_dict(vertex_layers):
 def process_trip(lats, lons, cell_range=0, max_dist=50):
     vertex_layers = project_trip_coordinates_onto_edges(lats, lons,
                                                         cell_range=cell_range, max_dist=max_dist)
+    if vertex_layers is None:
+        return None
     data_output_dict = generate_network_distances_dict(vertex_layers)
-
-    output_path = f'/output_data/network_distances.json'
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    with open(output_path, 'w') as f:
-        json.dump(data_output_dict, f, indent=4)
 
     return data_output_dict
