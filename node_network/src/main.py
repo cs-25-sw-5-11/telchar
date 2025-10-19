@@ -1,11 +1,17 @@
 from classes.classes import Vertex, Edge
 from graph_building.functions_building import build_graph
-from analysis.functions_analysis import filter_non_largest_network
+
 from analysis.find_networks import find_networks
+from analysis.filter_largest_network import filter_largest_network
+
 from plotting.functions_plotting import plot_networks, plot_directed_graph
+
 from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
+
 from utils.functions_misc import get_time_index,writeout_traversals_to_json,restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states
+
 from viterbi.viterbi import viterbi_algorithm
+
 import matplotlib.pyplot as plt
 import logging
 from tqdm import tqdm
@@ -36,7 +42,7 @@ if __name__ == "__main__":
     build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
 
     networks = find_networks()
-    filter_non_largest_network(networks)
+    filter_largest_network(networks)
 
     if COMPARE_STATES:
         # Capture original state for later comparison

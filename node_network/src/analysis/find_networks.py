@@ -1,5 +1,5 @@
 from classes.classes import Vertex
-
+from tqdm import tqdm
 
 def explore_neighbors(start_vertex: 'Vertex', visited: set['Vertex']) -> set['Vertex']:
     """DFS search for all neighbors"""
