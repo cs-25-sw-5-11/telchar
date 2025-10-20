@@ -77,7 +77,7 @@ class Vertex:
         if node_id is not None and node_id in cls._vertex_dict:
             existing_vertex = cls._vertex_dict[node_id]
             if temporary:
-                if existing_vertex in cls.temporary_vertices:
+                if existing_vertex in cls._temporary_vertices:
                     logger.debug("Requested temporary creation of existing temporary vertex %s", node_id)
                 else:
                     logger.warning("Attempt to treat existing non-temporary vertex %s as temporary; ignoring temporary flag", node_id)
@@ -113,7 +113,7 @@ class Vertex:
         # Determine & record temporary status
         self.is_temporary = bool(temporary)
         if self.is_temporary:
-            Vertex.temporary_vertices.add(self)
+            Vertex._temporary_vertices.add(self)
         
         # Calculate and store bin coordinates
         self.bin_coords = get_bin_indices(self.lat, self.lon)
@@ -148,8 +148,8 @@ class Vertex:
         self._delete_from_bin_lookup()
         
         # Remove from temporary list
-        if self in Vertex.temporary_vertices:
-            Vertex.temporary_vertices.remove(self)
+        if self in Vertex._temporary_vertices:
+            Vertex._temporary_vertices.remove(self)
 
         connected_edges = list(self.onward_edges.keys()) + list(self.backward_edges.keys())
         for edge in connected_edges:
@@ -247,6 +247,18 @@ class Edge:
     def get_all_edges(cls) -> list['Edge']:
         """Public function to get a list of all Edge objects."""
         return list(cls._edge_dict.values())
+    
+    @classmethod
+    def _remove_from_temporary_edges(cls, edge: 'Edge') -> None:
+        """Private function to remove an edge from the temporary edges set."""
+        if edge in cls._temporary_edges:
+            cls._temporary_edges.remove(edge)
+
+    @classmethod
+    def _remove_from_detached_edges(cls, edge: 'Edge') -> None:
+        """Private function to remove an edge from the detached edges set."""
+        if edge in cls._detached_edges:
+            cls._detached_edges.remove(edge)
 
     def __init__(self, start_vertex: Vertex, end_vertex: Vertex, non_vertex_nodes: list[Tuple[float, float, int]], type: str, oneway: bool, parent_edge=None):
         self.start = start_vertex  # Vertex object
@@ -330,9 +342,9 @@ class Edge:
             edge1.parent_edge = self.parent_edge
             edge2.parent_edge = self.parent_edge
 
-            Edge.temporary_edges.add(edge1)
-            Edge.temporary_edges.add(edge2)
-            if self in Edge.temporary_edges:
+            Edge._temporary_edges.add(edge1)
+            Edge._temporary_edges.add(edge2)
+            if self in Edge._temporary_edges:
                 # Splitting a temporary edge: remove original temporary container edge
                 self.delete_edge()
             else:
@@ -366,9 +378,7 @@ class Edge:
         # Re-add this edge to the spatial bin lookup now that it is active again
         self._update_bin_lookup()
         
-        # Remove from detached_edges list if present
-        if self in Edge.detached_edges:
-            Edge.detached_edges.remove(self)
+        Edge._remove_from_detached_edges(self)
 
     def delete_edge(self):
         self._remove_references_to_edge()
@@ -384,11 +394,9 @@ class Edge:
                     del Edge._bin_lookup[bin_coord]
         
         # Remove from temporary and detached edges list if present
-        if self in Edge.temporary_edges:
-            Edge.temporary_edges.remove(self)
-        if self in Edge.detached_edges:
-            Edge.detached_edges.remove(self)
-        
+        Edge._remove_from_temporary_edges(self)
+        Edge._remove_from_detached_edges(self)
+
     def detach_edge(self):
         if self.detached:
             return
@@ -396,8 +404,8 @@ class Edge:
         # Remove from bin lookup so spatial queries no longer see this edge
         self._remove_from_bin_lookup()
         self.detached = True
-        if self not in Edge.detached_edges:
-            Edge.detached_edges.add(self)
+        if self not in Edge._detached_edges:
+            Edge._detached_edges.add(self)
 
     def project_coordinates_onto_edge(self, lat: float, lon: float):
         points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]

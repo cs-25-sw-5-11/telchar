@@ -217,7 +217,7 @@ def plot_directed_graph(lat_min=None, lat_max=None, lon_min=None, lon_max=None,
         edges_to_plot.update(vertex.backward_edges.keys())
     
     print(f"Found {len(vertices_to_plot)} vertices in {len(relevant_bins)} relevant bins")
-    print(f"Plotting {len(edges_to_plot)} edges connected to those vertices (instead of {len(Edge.edge_dict)} total edges)")
+    print(f"Plotting {len(edges_to_plot)} edges connected to those vertices (instead of {Edge.get_num_of_edges()} total edges)")
         
     for edge in tqdm(edges_to_plot, desc="Plotting edges"):
         lats = [edge.start.lat] + [lat for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lat]

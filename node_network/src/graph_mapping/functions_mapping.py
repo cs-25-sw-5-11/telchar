@@ -231,14 +231,13 @@ def find_or_create_vertex_at_projection(proj_lat, proj_lon, tolerance=1e-9):
     
     lat_idx, lon_idx = idx
     # Check if there are vertices in this bin
-    if (lat_idx, lon_idx) in Vertex._bin_lookup:
-        for v in Vertex._bin_lookup[(lat_idx, lon_idx)]:
-            if abs(v.lat - proj_lat) <= tolerance and abs(v.lon - proj_lon) <= tolerance:
-                return v, False
+    for vertex in Vertex.get_vertices_in_bin(lat_idx, lon_idx):
+        if abs(vertex.lat - proj_lat) <= tolerance and abs(vertex.lon - proj_lon) <= tolerance:
+            return vertex, False
     
     # No existing vertex found, create new one
-    v = Vertex(proj_lat, proj_lon, temporary=True)
-    return v, True
+    vertex = Vertex(proj_lat, proj_lon, temporary=True)
+    return vertex, True
 
 def all_pairs_network_distances_between_layers(layer1, layer2):
     """

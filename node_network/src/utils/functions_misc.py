@@ -255,16 +255,16 @@ def compare_network_states(state1, state2):
     
     # Compare vertex connections (only for vertices that exist in both states)
     common_vertices = state1['vertex_ids'] & state2['vertex_ids']
-    for vid in common_vertices:
-        if state1['vertex_connections'][vid] != state2['vertex_connections'][vid]:
-            differences.append(f"Vertex {vid} connections changed")
+    for vertex in common_vertices:
+        if state1['vertex_connections'][vertex.id] != state2['vertex_connections'][vertex.id]:
+            differences.append(f"Vertex {vertex.id} connections changed")
     
     # Compare edge properties (only for edges that exist in both states)
     common_edges = state1['edge_ids'] & state2['edge_ids']
-    for eid in common_edges:
-        if state1['edge_properties'][eid] != state2['edge_properties'][eid]:
-            differences.append(f"Edge {eid} properties changed")
-    
+    for edge in common_edges:
+        if state1['edge_properties'][edge.id] != state2['edge_properties'][edge.id]:
+            differences.append(f"Edge {edge.id} properties changed")
+
     if differences:
         print("Network state differences found:")
         for diff in differences:
