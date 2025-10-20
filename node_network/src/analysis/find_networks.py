@@ -38,7 +38,7 @@ def find_road_subnetworks(vertices: list['Vertex'])-> list[set['Vertex']]:
 
 def find_networks() -> list[set['Vertex']]:
     """Main function, finds all connected road networks"""
-    vertices = list(Vertex.vertex_dict.values())
+    vertices = Vertex.get_all_vertices()
     networks = find_road_subnetworks(vertices)
 
     print(f"Number of networks (connected components): {len(networks)}")

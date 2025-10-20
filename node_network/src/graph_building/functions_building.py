@@ -47,7 +47,7 @@ def create_edge(road: dict[str,any], nodes_dict: dict[str, dict[str,float]]) -> 
 
 def convert_point_to_vertex(node_id: str, nodes_dict: dict[str, dict[str,float]]) -> None:
     # Don't recreate if already exists
-    if int(node_id) in Vertex.vertex_dict:
+    if Vertex.get_vertex_by_id(int(node_id)) is not None:
         return
 
     node_data = nodes_dict[node_id]
@@ -55,12 +55,12 @@ def convert_point_to_vertex(node_id: str, nodes_dict: dict[str, dict[str,float]]
     return
 
 def print_stats():
-    max_vertex_id = max(Vertex.vertex_dict.keys(), default=0)
-    max_edge_id = max(Edge.edge_dict.keys(), default=0)
+    max_vertex_id = Vertex.get_max_vertex_id()
+    max_edge_id = Edge.get_max_edge_id()
     print(f"Max vertex ID: {max_vertex_id}, Max edge ID: {max_edge_id}")    
     
     print(f"Graph construction complete!")
-    print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
+    print(f"Created {Vertex.get_num_of_vertices()} vertices and {Edge.get_num_of_edges()} edges")
     return
 
 def build_graph(nodes_file: str, roads_file:str):
@@ -102,7 +102,7 @@ def build_graph(nodes_file: str, roads_file:str):
     
     print("Step 4: Splitting edges at intersection points...")
     # Step 4: Split edges where non-vertex nodes should actually be vertices
-    edges_to_process = list(Edge.edge_dict.values())  # Get current edges
+    edges_to_process = Edge.get_all_edges()  # Get current edges
     process_edges_to_split(edges_to_process,should_be_vertices)
     # Print max id for edges and vertices
     
