@@ -55,12 +55,12 @@ def convert_point_to_vertex(node_id: str, nodes_dict: dict[str, dict[str,float]]
     return
 
 def print_stats():
-    max_vertex_id = max(Vertex.vertex_dict.keys(), default=0)
-    max_edge_id = max(Edge.edge_dict.keys(), default=0)
+    max_vertex_id = Vertex.get_max_vertex_id()
+    max_edge_id = Edge.get_max_edge_id()
     print(f"Max vertex ID: {max_vertex_id}, Max edge ID: {max_edge_id}")    
     
     print(f"Graph construction complete!")
-    print(f"Created {len(Vertex.vertex_dict)} vertices and {len(Edge.edge_dict)} edges")
+    print(f"Created {Vertex.get_num_of_vertices()} vertices and {Edge.get_num_of_edges()} edges")
     return
 
 def build_graph(nodes_file: str, roads_file:str):

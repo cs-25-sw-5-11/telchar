@@ -11,15 +11,15 @@ def in_largest_network(vertex, largest_network):
 
 def plot_networks(results=None, vertex_layers=None, highlight_lat=None, highlight_lon=None, show_densest_bin=False, cell_range=0):
     plt.figure(figsize=(12, 10))
-    for edge in tqdm(Edge.edge_dict.values(), desc="Plotting edges"):
+    for edge in tqdm(Edge.get_all_edges(), desc="Plotting edges"):
         lats = [edge.start.lat] + [lat for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lat]
         lons = [edge.start.lon] + [lon for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lon]
         plt.plot(lons, lats, color='black', zorder=3, linewidth=1, alpha=0.7)
 
     black_lats, black_lons = [], []
-    for v in tqdm(Vertex.vertex_dict.values(), desc="Collecting vertices for scatter plot"):
-        black_lats.append(v.lat)
-        black_lons.append(v.lon)
+    for vertex in tqdm(Vertex.get_all_vertices(), desc="Collecting vertices for scatter plot"):
+        black_lats.append(vertex.lat)
+        black_lons.append(vertex.lon)
     plt.scatter(black_lons, black_lats, c='black', s=5, zorder=3, label='Network')
 
     # Highlight the center and edges of the densest bin (using class-based system)

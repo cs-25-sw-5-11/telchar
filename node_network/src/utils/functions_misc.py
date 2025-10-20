@@ -78,9 +78,9 @@ def restore_network_to_original_state(debug: bool=False):
     
     logger.debug("Restoring network to original state...")
     # Count current state for reporting
-    initial_temp_vertices = len(Vertex.temporary_vertices)
-    initial_temp_edges = len(Edge.temporary_edges)
-    initial_detached_edges = len(Edge.detached_edges)
+    initial_temp_vertices = Vertex.get_num_of_temporary_vertices()
+    initial_temp_edges = Edge.get_num_of_temporary_edges()
+    initial_detached_edges = Edge.get_num_of_detached_edges()
     if debug:
         
         print(f"  Found {initial_temp_vertices} temporary vertices to delete")
@@ -107,10 +107,10 @@ def restore_network_to_original_state(debug: bool=False):
             print(f"  ? Reattached {initial_detached_edges} detached edges")
     
     # Verify cleanup was successful
-    remaining_temp_vertices = len(Vertex.temporary_vertices)
-    remaining_temp_edges = len(Edge.temporary_edges)
-    remaining_detached_edges = len(Edge.detached_edges)
-    
+    remaining_temp_vertices = Vertex.get_num_of_temporary_vertices()
+    remaining_temp_edges = Edge.get_num_of_temporary_edges()
+    remaining_detached_edges = Edge.get_num_of_detached_edges()
+
     if remaining_temp_vertices == 0 and remaining_temp_edges == 0 and remaining_detached_edges == 0:
         logger.debug("Network successfully restored to original state")
         return True
@@ -132,38 +132,38 @@ def validate_network_integrity():
     issues = []
     
     # Check all edges have valid vertices
-    for edge_id, edge in Edge.edge_dict.items():
-        if edge.start.id not in Vertex.vertex_dict:
-            issues.append(f"Edge {edge_id} start vertex {edge.start.id} not in vertex_dict")
-        
-        if edge.end.id not in Vertex.vertex_dict:
-            issues.append(f"Edge {edge_id} end   vertex {edge.end.id} not in vertex_dict")
+    for edge in Edge.get_all_edges():
+        if Vertex.check_vertex_exists(edge.start.id) is False:
+            issues.append(f"Edge {edge.id} start vertex {edge.start.id} not in vertex_dict")
+
+        if Vertex.check_vertex_exists(edge.end.id) is False:
+            issues.append(f"Edge {edge.id} end   vertex {edge.end.id} not in vertex_dict")
         
         # Check vertex-edge connections are consistent
         if edge not in edge.start.onward_edges:
-            issues.append(f"Edge {edge_id} missing from start vertex {edge.start.id} onward_edges")
-        
+            issues.append(f"Edge {edge.id} missing from start vertex {edge.start.id} onward_edges")
+
         if edge not in edge.end.backward_edges:
-            issues.append(f"Edge {edge_id} missing from end vertex {edge.end.id} backward_edges")
-        
+            issues.append(f"Edge {edge.id} missing from end vertex {edge.end.id} backward_edges")
+
         # Check bidirectional edges
         if not edge.oneway:
             if edge not in edge.end.onward_edges:
-                issues.append(f"Bidirectional edge {edge_id} missing from end vertex {edge.end.id} onward_edges")
+                issues.append(f"Bidirectional edge {edge.id} missing from end vertex {edge.end.id} onward_edges")
             
             if edge not in edge.start.backward_edges:
-                issues.append(f"Bidirectional edge {edge_id} missing from start vertex {edge.start.id} backward_edges")
+                issues.append(f"Bidirectional edge {edge.id} missing from start vertex {edge.start.id} backward_edges")
     
     # Check vertex connections point to valid edges
-    for vertex_id, vertex in Vertex.vertex_dict.items():
+    for vertex in Vertex.get_all_vertices():
         for edge in vertex.onward_edges.keys():
-            if edge.id not in Edge.edge_dict:
-                issues.append(f"Vertex {vertex_id} references non-existent edge {edge.id} in onward_edges")
-        
+            if Edge.check_edge_exists(edge.id) is False:
+                issues.append(f"Vertex {vertex.id} references non-existent edge {edge.id} in onward_edges")
+
         for edge in vertex.backward_edges.keys():
-            if edge.id not in Edge.edge_dict:
-                issues.append(f"Vertex {vertex_id} references non-existent edge {edge.id} in backward_edges")
-    
+            if Edge.check_edge_exists(edge.id) is False:
+                issues.append(f"Vertex {vertex.id} references non-existent edge {edge.id} in backward_edges")
+
     if issues:
         print(f"  ? Found {len(issues)} integrity issues:")
         for issue in issues:
@@ -181,27 +181,27 @@ def capture_network_state():
     from classes.classes import Vertex, Edge
     
     state = {
-        'vertex_count': len(Vertex.vertex_dict),
-        'edge_count': len(Edge.edge_dict),
-        'vertex_ids': set(Vertex.vertex_dict.keys()),
-        'edge_ids': set(Edge.edge_dict.keys()),
-        'temporary_vertices': len(Vertex.temporary_vertices),
-        'temporary_edges': len(Edge.temporary_edges),
-        'detached_edges': len(Edge.detached_edges),
+        'vertex_count': Vertex.get_num_of_vertices(),
+        'edge_count': Edge.get_num_of_edges(),
+        'vertex_ids': set(Vertex.get_all_vertices()),
+        'edge_ids': set(Edge.get_all_edges()),
+        'temporary_vertices': Vertex.get_num_of_temporary_vertices(),
+        'temporary_edges': Edge.get_num_of_temporary_edges(),
+        'detached_edges': Edge.get_num_of_detached_edges(),
         'vertex_connections': {},
         'edge_properties': {}
     }
     
     # Capture vertex connections
-    for vid, vertex in Vertex.vertex_dict.items():
-        state['vertex_connections'][vid] = {
-            'onward_edges': set(edge.id for edge in vertex.onward_edges.keys()),
-            'backward_edges': set(edge.id for edge in vertex.backward_edges.keys())
+    for vertex in Vertex.get_all_vertices():
+        state['vertex_connections'][vertex.id] = {
+            'onward_edges': set(edge.id for edge in vertex.get_outward_edges()),
+            'backward_edges': set(edge.id for edge in vertex.get_backward_edges())
         }
     
     # Capture edge properties
-    for eid, edge in Edge.edge_dict.items():
-        state['edge_properties'][eid] = {
+    for edge in Edge.get_all_edges():
+        state['edge_properties'][edge.id] = {
             'start_vertex': edge.start.id,
             'end_vertex': edge.end.id,
             'oneway': edge.oneway,

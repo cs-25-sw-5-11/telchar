@@ -4,9 +4,9 @@ from classes.classes import Vertex, Edge
 def get_vertices_to_split(edge, should_be_vertices)-> list['Vertex']:
     vertices = []
     for lat, lon, node_id in edge.non_vertex_nodes:
-            if str(node_id) in should_be_vertices:
+            if node_id in should_be_vertices:
                 # Convert to int for consistent vertex lookup
-                vertex = Vertex.vertex_dict[int(node_id)]
+                vertex = Vertex.get_vertex_by_id(int(node_id))
                 vertices.append(vertex)
     return vertices
 

@@ -70,7 +70,7 @@ if __name__ == "__main__":
                 # Write edge traversals data to json file.
                 print(f"Writing edge traversal data before processing trip_id {trip_id}")
                 writeout_traversals_to_json(file_path='edge_traversals.json', 
-                                            edge_items=list(Edge.edge_dict.values()))
+                                            edge_items=Edge.get_all_edges())
                 end_time = datetime.now()
                 time_diff = (end_time - start_time)
                 print(f"Writeout at {start_time}, took {time_diff.seconds}.{time_diff.microseconds} seconds.")
@@ -95,8 +95,8 @@ if __name__ == "__main__":
                 continue
             edges_in_path = []
             for i in range(len(best_path)-1):
-                start_vertex = Vertex.vertex_dict[best_path[i]]
-                end_vertex = Vertex.vertex_dict[best_path[i+1]]
+                start_vertex = Vertex.get_vertex_by_id(best_path[i])
+                end_vertex = Vertex.get_vertex_by_id(best_path[i+1])
                 dist, path_edges = find_shortest_edge_path(start_vertex, end_vertex)
 
                 # 0 as reference, as times has already been adjusted for the reference value.
@@ -111,7 +111,9 @@ if __name__ == "__main__":
 
                 edges_in_path.extend(path_edges)
 
-            best_path_vertex_coords = [(Vertex.vertex_dict[vertex_id].lat, Vertex.vertex_dict[vertex_id].lon) for vertex_id in best_path]
+            best_path_vertex_coords = [(Vertex.get_vertex_by_id(vertex_id).lat, 
+                                        Vertex.get_vertex_by_id(vertex_id).lon) 
+                                        for vertex_id in best_path]
             for edge in edges_in_path:
                 edge.parent_edge.highlighted = True
 
@@ -120,7 +122,7 @@ if __name__ == "__main__":
     restore_network_to_original_state()
     print("Final writeout of edge traversal data...")
     writeout_traversals_to_json(file_path='edge_traversals.json', 
-                                edge_items=list(Edge.edge_dict.values()))
+                                edge_items=Edge.get_all_edges())
 
     if PLOT:
         plot_directed_graph(lat_min=45.62, lat_max=45.77, lon_min=126.65, lon_max=126.75,
@@ -135,7 +137,7 @@ if __name__ == "__main__":
     # Write vertex connections to json file
     with open('vertex_data.json', 'w') as f:
         f.write('{\n')
-        vertex_items = list(Vertex.vertex_dict.values())
+        vertex_items = Vertex.get_all_vertices()
         for i, vertex in enumerate(vertex_items):
             connections = {
                 'outward_edges': [edge.id for edge in vertex.get_outward_edges()],
