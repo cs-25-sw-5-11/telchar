@@ -1,4 +1,5 @@
 from classes.classes import Vertex
+from .filter_largest_network import filter_largest_network
 from tqdm import tqdm
 
 def explore_neighbors(start_vertex: 'Vertex', visited: set['Vertex']) -> set['Vertex']:
@@ -36,11 +37,12 @@ def find_road_subnetworks(vertices: list['Vertex'])-> list[set['Vertex']]:
 
 
 
-def find_networks() -> list[set['Vertex']]:
+def find_network() -> list[set['Vertex']]:
     """Main function, finds all connected road networks"""
     vertices = Vertex.get_all_vertices()
     networks = find_road_subnetworks(vertices)
 
     print(f"Number of networks (connected components): {len(networks)}")
-
+    filter_largest_network(networks)
+    
     return networks

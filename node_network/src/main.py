@@ -1,8 +1,6 @@
 from classes.classes import Vertex, Edge
-from graph_building.functions_building import build_graph
-
-from analysis.find_networks import find_networks
-from analysis.filter_largest_network import filter_largest_network
+from graph_building.build_graph import build_graph
+from graph_building.find_network import find_network
 
 from plotting.functions_plotting import plot_networks, plot_directed_graph
 
@@ -41,8 +39,7 @@ WRITEOUT_INTERVAL = 1000 # How often to write edge data to file (in number of tr
 if __name__ == "__main__":
     build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
 
-    networks = find_networks()
-    filter_largest_network(networks)
+    network = find_network()
 
     if COMPARE_STATES:
         # Capture original state for later comparison

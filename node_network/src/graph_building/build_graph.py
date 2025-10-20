@@ -63,7 +63,7 @@ def print_stats():
     print(f"Created {Vertex.get_num_of_vertices()} vertices and {Edge.get_num_of_edges()} edges")
     return
 
-def build_graph(nodes_file: str, roads_file:str):
+def build_graph(nodes_file: str, roads_file: str):
     """Main function for function_building"""
     # Clear Vertex and edge dictionaries
     Vertex.clear_all()
