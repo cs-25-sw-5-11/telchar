@@ -57,7 +57,7 @@ def get_bin_indices(lat: float, lon: float):
     Returns:
         Tuple[int, int] or None: (lat_idx, lon_idx) if within bounds, None otherwise
     """
-    from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+    from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
     
     if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX):
         return None
@@ -74,13 +74,13 @@ def restore_network_to_original_state(debug: bool=False):
     
     This ensures the network is identical to its state before any temporary modifications.
     """
-    from classes import Vertex, Edge
+    from classes.classes import Vertex, Edge
     
     logger.debug("Restoring network to original state...")
     # Count current state for reporting
-    initial_temp_vertices = len(Vertex.temporary_vertices)
-    initial_temp_edges = len(Edge.temporary_edges)
-    initial_detached_edges = len(Edge.detached_edges)
+    initial_temp_vertices = Vertex.get_num_of_temporary_vertices()
+    initial_temp_edges = Edge.get_num_of_temporary_edges()
+    initial_detached_edges = Edge.get_num_of_detached_edges()
     if debug:
         
         print(f"  Found {initial_temp_vertices} temporary vertices to delete")
@@ -107,10 +107,10 @@ def restore_network_to_original_state(debug: bool=False):
             print(f"  ? Reattached {initial_detached_edges} detached edges")
     
     # Verify cleanup was successful
-    remaining_temp_vertices = len(Vertex.temporary_vertices)
-    remaining_temp_edges = len(Edge.temporary_edges)
-    remaining_detached_edges = len(Edge.detached_edges)
-    
+    remaining_temp_vertices = Vertex.get_num_of_temporary_vertices()
+    remaining_temp_edges = Edge.get_num_of_temporary_edges()
+    remaining_detached_edges = Edge.get_num_of_detached_edges()
+
     if remaining_temp_vertices == 0 and remaining_temp_edges == 0 and remaining_detached_edges == 0:
         logger.debug("Network successfully restored to original state")
         return True
@@ -126,44 +126,44 @@ def validate_network_integrity():
     3. All vertices/edges are properly registered in dictionaries
     4. Bin lookups are consistent
     """
-    from classes import Vertex, Edge
+    from classes.classes import Vertex, Edge
     
     logger.debug("Validating network integrity...")
     issues = []
     
     # Check all edges have valid vertices
-    for edge_id, edge in Edge.edge_dict.items():
-        if edge.start.id not in Vertex.vertex_dict:
-            issues.append(f"Edge {edge_id} start vertex {edge.start.id} not in vertex_dict")
-        
-        if edge.end.id not in Vertex.vertex_dict:
-            issues.append(f"Edge {edge_id} end   vertex {edge.end.id} not in vertex_dict")
+    for edge in Edge.get_all_edges():
+        if Vertex.check_vertex_exists(edge.start.id) is False:
+            issues.append(f"Edge {edge.id} start vertex {edge.start.id} not in vertex_dict")
+
+        if Vertex.check_vertex_exists(edge.end.id) is False:
+            issues.append(f"Edge {edge.id} end   vertex {edge.end.id} not in vertex_dict")
         
         # Check vertex-edge connections are consistent
         if edge not in edge.start.onward_edges:
-            issues.append(f"Edge {edge_id} missing from start vertex {edge.start.id} onward_edges")
-        
+            issues.append(f"Edge {edge.id} missing from start vertex {edge.start.id} onward_edges")
+
         if edge not in edge.end.backward_edges:
-            issues.append(f"Edge {edge_id} missing from end vertex {edge.end.id} backward_edges")
-        
+            issues.append(f"Edge {edge.id} missing from end vertex {edge.end.id} backward_edges")
+
         # Check bidirectional edges
         if not edge.oneway:
             if edge not in edge.end.onward_edges:
-                issues.append(f"Bidirectional edge {edge_id} missing from end vertex {edge.end.id} onward_edges")
+                issues.append(f"Bidirectional edge {edge.id} missing from end vertex {edge.end.id} onward_edges")
             
             if edge not in edge.start.backward_edges:
-                issues.append(f"Bidirectional edge {edge_id} missing from start vertex {edge.start.id} backward_edges")
+                issues.append(f"Bidirectional edge {edge.id} missing from start vertex {edge.start.id} backward_edges")
     
     # Check vertex connections point to valid edges
-    for vertex_id, vertex in Vertex.vertex_dict.items():
+    for vertex in Vertex.get_all_vertices():
         for edge in vertex.onward_edges.keys():
-            if edge.id not in Edge.edge_dict:
-                issues.append(f"Vertex {vertex_id} references non-existent edge {edge.id} in onward_edges")
-        
+            if Edge.check_edge_exists(edge.id) is False:
+                issues.append(f"Vertex {vertex.id} references non-existent edge {edge.id} in onward_edges")
+
         for edge in vertex.backward_edges.keys():
-            if edge.id not in Edge.edge_dict:
-                issues.append(f"Vertex {vertex_id} references non-existent edge {edge.id} in backward_edges")
-    
+            if Edge.check_edge_exists(edge.id) is False:
+                issues.append(f"Vertex {vertex.id} references non-existent edge {edge.id} in backward_edges")
+
     if issues:
         print(f"  ? Found {len(issues)} integrity issues:")
         for issue in issues:
@@ -178,30 +178,30 @@ def capture_network_state():
     Capture the current state of the network for comparison.
     Returns a dictionary with network statistics and structure.
     """
-    from classes import Vertex, Edge
+    from classes.classes import Vertex, Edge
     
     state = {
-        'vertex_count': len(Vertex.vertex_dict),
-        'edge_count': len(Edge.edge_dict),
-        'vertex_ids': set(Vertex.vertex_dict.keys()),
-        'edge_ids': set(Edge.edge_dict.keys()),
-        'temporary_vertices': len(Vertex.temporary_vertices),
-        'temporary_edges': len(Edge.temporary_edges),
-        'detached_edges': len(Edge.detached_edges),
+        'vertex_count': Vertex.get_num_of_vertices(),
+        'edge_count': Edge.get_num_of_edges(),
+        'vertex_ids': set(Vertex.get_all_vertices()),
+        'edge_ids': set(Edge.get_all_edges()),
+        'temporary_vertices': Vertex.get_num_of_temporary_vertices(),
+        'temporary_edges': Edge.get_num_of_temporary_edges(),
+        'detached_edges': Edge.get_num_of_detached_edges(),
         'vertex_connections': {},
         'edge_properties': {}
     }
     
     # Capture vertex connections
-    for vid, vertex in Vertex.vertex_dict.items():
-        state['vertex_connections'][vid] = {
-            'onward_edges': set(edge.id for edge in vertex.onward_edges.keys()),
-            'backward_edges': set(edge.id for edge in vertex.backward_edges.keys())
+    for vertex in Vertex.get_all_vertices():
+        state['vertex_connections'][vertex.id] = {
+            'onward_edges': set(edge.id for edge in vertex.get_outward_edges()),
+            'backward_edges': set(edge.id for edge in vertex.get_backward_edges())
         }
     
     # Capture edge properties
-    for eid, edge in Edge.edge_dict.items():
-        state['edge_properties'][eid] = {
+    for edge in Edge.get_all_edges():
+        state['edge_properties'][edge.id] = {
             'start_vertex': edge.start.id,
             'end_vertex': edge.end.id,
             'oneway': edge.oneway,
@@ -255,16 +255,16 @@ def compare_network_states(state1, state2):
     
     # Compare vertex connections (only for vertices that exist in both states)
     common_vertices = state1['vertex_ids'] & state2['vertex_ids']
-    for vid in common_vertices:
-        if state1['vertex_connections'][vid] != state2['vertex_connections'][vid]:
-            differences.append(f"Vertex {vid} connections changed")
+    for vertex in common_vertices:
+        if state1['vertex_connections'][vertex.id] != state2['vertex_connections'][vertex.id]:
+            differences.append(f"Vertex {vertex.id} connections changed")
     
     # Compare edge properties (only for edges that exist in both states)
     common_edges = state1['edge_ids'] & state2['edge_ids']
-    for eid in common_edges:
-        if state1['edge_properties'][eid] != state2['edge_properties'][eid]:
-            differences.append(f"Edge {eid} properties changed")
-    
+    for edge in common_edges:
+        if state1['edge_properties'][edge.id] != state2['edge_properties'][edge.id]:
+            differences.append(f"Edge {edge.id} properties changed")
+
     if differences:
         print("Network state differences found:")
         for diff in differences:

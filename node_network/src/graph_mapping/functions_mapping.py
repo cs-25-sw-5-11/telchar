@@ -1,9 +1,9 @@
 import heapq
 import os
 import json
-from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
-from classes import Vertex, Edge
-from functions_misc import get_bin_indices, restore_network_to_original_state
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from classes.classes import Vertex, Edge
+from utils.functions_misc import get_bin_indices, restore_network_to_original_state
 import pandas as pd
 import logging
 
@@ -84,8 +84,8 @@ def find_existing_vertex_at_projection(proj_lat, proj_lon, proj_edge, tolerance=
     
     # Check if it's close to any existing vertex in the same bin
     idx = get_bin_indices(proj_lat, proj_lon)
-    if idx and idx in Vertex._bin_lookup:
-        for vertex in Vertex._bin_lookup[idx]:
+    if idx:
+        for vertex in Vertex.get_vertices_in_bin(idx[0], idx[1]):
             if abs(vertex.lat - proj_lat) < tolerance and abs(vertex.lon - proj_lon) < tolerance:
                 return vertex
     
@@ -120,8 +120,8 @@ def create_temporary_vertex_and_split_edge(proj_lat, proj_lon, proj_edge, seg_id
         # Remove the inserted node if splitting failed
         proj_edge.non_vertex_nodes.pop(insert_pos)
         # Remove the temporary vertex
-        if temp_vertex.id in Vertex.vertex_dict:
-            del Vertex.vertex_dict[temp_vertex.id]
+        if Vertex.check_vertex_exists(temp_vertex.id):
+            Vertex.delete_vertex_by_id(temp_vertex.id)
         return None
 
 def process_single_projection(proj_edge, proj_lat, proj_lon, proj_dist, seg_idx):
@@ -218,7 +218,7 @@ def project_trip_coordinates_onto_edges(lats, lons, cell_range=0, max_dist=float
             print(f"  Created/found {len(projected_vertices)} vertices for this trip point")
 
     if debug:
-        print(f"Trip projection complete. Created {len(Vertex.temporary_vertices)} temporary vertices")
+        print(f"Trip projection complete. Created {Vertex.get_num_of_temporary_vertices()} temporary vertices")
     return results
 
 def find_or_create_vertex_at_projection(proj_lat, proj_lon, tolerance=1e-9):
@@ -231,14 +231,13 @@ def find_or_create_vertex_at_projection(proj_lat, proj_lon, tolerance=1e-9):
     
     lat_idx, lon_idx = idx
     # Check if there are vertices in this bin
-    if (lat_idx, lon_idx) in Vertex._bin_lookup:
-        for v in Vertex._bin_lookup[(lat_idx, lon_idx)]:
-            if abs(v.lat - proj_lat) <= tolerance and abs(v.lon - proj_lon) <= tolerance:
-                return v, False
+    for vertex in Vertex.get_vertices_in_bin(lat_idx, lon_idx):
+        if abs(vertex.lat - proj_lat) <= tolerance and abs(vertex.lon - proj_lon) <= tolerance:
+            return vertex, False
     
     # No existing vertex found, create new one
-    v = Vertex(proj_lat, proj_lon, temporary=True)
-    return v, True
+    vertex = Vertex(proj_lat, proj_lon, temporary=True)
+    return vertex, True
 
 def all_pairs_network_distances_between_layers(layer1, layer2):
     """

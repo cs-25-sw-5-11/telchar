@@ -1,9 +1,9 @@
 import matplotlib.pyplot as plt
 from tqdm import tqdm
-from classes import Vertex, Edge
-from config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
-from functions_mapping import get_edges_near_coordinates
-from functions_misc import get_bin_indices
+from classes.classes import Vertex, Edge
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from graph_mapping.functions_mapping import get_edges_near_coordinates
+from utils.functions_misc import get_bin_indices
 
 
 def in_largest_network(vertex, largest_network):
@@ -11,15 +11,15 @@ def in_largest_network(vertex, largest_network):
 
 def plot_networks(results=None, vertex_layers=None, highlight_lat=None, highlight_lon=None, show_densest_bin=False, cell_range=0):
     plt.figure(figsize=(12, 10))
-    for edge in tqdm(Edge.edge_dict.values(), desc="Plotting edges"):
+    for edge in tqdm(Edge.get_all_edges(), desc="Plotting edges"):
         lats = [edge.start.lat] + [lat for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lat]
         lons = [edge.start.lon] + [lon for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lon]
         plt.plot(lons, lats, color='black', zorder=3, linewidth=1, alpha=0.7)
 
     black_lats, black_lons = [], []
-    for v in tqdm(Vertex.vertex_dict.values(), desc="Collecting vertices for scatter plot"):
-        black_lats.append(v.lat)
-        black_lons.append(v.lon)
+    for vertex in tqdm(Vertex.get_all_vertices(), desc="Collecting vertices for scatter plot"):
+        black_lats.append(vertex.lat)
+        black_lons.append(vertex.lon)
     plt.scatter(black_lons, black_lats, c='black', s=5, zorder=3, label='Network')
 
     # Highlight the center and edges of the densest bin (using class-based system)
@@ -217,7 +217,7 @@ def plot_directed_graph(lat_min=None, lat_max=None, lon_min=None, lon_max=None,
         edges_to_plot.update(vertex.backward_edges.keys())
     
     print(f"Found {len(vertices_to_plot)} vertices in {len(relevant_bins)} relevant bins")
-    print(f"Plotting {len(edges_to_plot)} edges connected to those vertices (instead of {len(Edge.edge_dict)} total edges)")
+    print(f"Plotting {len(edges_to_plot)} edges connected to those vertices (instead of {Edge.get_num_of_edges()} total edges)")
         
     for edge in tqdm(edges_to_plot, desc="Plotting edges"):
         lats = [edge.start.lat] + [lat for lat, lon, id in edge.non_vertex_nodes] + [edge.end.lat]

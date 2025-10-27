@@ -1,1 +1,4 @@
 *.pyc
+cleaned_data/
+
+node_network/*.json
