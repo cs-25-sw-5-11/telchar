@@ -2,8 +2,7 @@ from __future__ import annotations
 from typing import Tuple, Set, Optional, Dict, List
 import logging
 import copy
-from classes.edge import Edge
-from classes.vertex import Vertex
+from . import Edge, Vertex
 
 logger = logging.getLogger(__name__)
 

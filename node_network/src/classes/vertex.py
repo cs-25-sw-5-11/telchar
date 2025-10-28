@@ -4,8 +4,8 @@ from utils.functions_misc import get_bin_indices
 import logging
 
 if TYPE_CHECKING:
-    from classes.network import Network
-    from classes.edge import Edge
+    from .network import Network
+    from .edge import Edge
 
 logger = logging.getLogger(__name__)
 

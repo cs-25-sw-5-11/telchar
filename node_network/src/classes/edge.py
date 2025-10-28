@@ -6,8 +6,8 @@ from math import sqrt
 import logging
 
 if TYPE_CHECKING:
-    from classes.network import Network
-    from classes.vertex import Vertex
+    from .network import Network
+    from .vertex import Vertex
 
 logger = logging.getLogger(__name__)
 
