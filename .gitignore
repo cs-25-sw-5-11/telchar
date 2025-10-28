@@ -1,4 +1,5 @@
 *.pyc
-cleaned_data/
+node_network/data
+
 
 node_network/*.json
