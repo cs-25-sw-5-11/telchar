@@ -1,7 +1,8 @@
 from classes.classes import Vertex, Edge
 from graph_building.build_graph import build_graph
 from graph_building.find_network import find_network
-
+from extract_osm_map.extract_osm_roads import extract_map
+from data_cleaning.clean_trips import clean_trips
 from plotting.functions_plotting import plot_networks, plot_directed_graph
 
 from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
@@ -129,8 +130,9 @@ def process_trip_by_id(trip_id: int, df: pd.DataFrame) ->  tuple[list[Edge], lis
     return edges_in_path, best_path_vertex_coords, lats, lons
 
 def main() -> None:
-
-    build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
+    extract_map("../data/input", "../data/cleaned_data")
+    clean_trips("../data/input", "../data/cleaned_data")
+    build_graph('../data/cleaned_data/osm_nodes_output.json', '../data/cleaned_data/osm_roads_output.json')
     network = find_network()
 
     if COMPARE_STATES:

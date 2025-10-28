@@ -36,7 +36,7 @@ def check_has_high_speed(trip_buffer, timestamp_idx=4, lon_idx=3, lat_idx=2, spe
             continue
     return False
 
-def clean_trips(input_dir='data', output_dir='cleaned_data'):
+def clean_trips(input_dir: string, output_dir: string):
     os.makedirs(output_dir, exist_ok=True)
     csv_files = glob(os.path.join(input_dir, '*.csv'))
     for file in csv_files:
@@ -73,5 +73,3 @@ def clean_trips(input_dir='data', output_dir='cleaned_data'):
             for l in cleaned_lines:
                 fout.write(l if l.endswith('\n') else l + '\n')
 
-if __name__ == '__main__':
-    clean_trips()
