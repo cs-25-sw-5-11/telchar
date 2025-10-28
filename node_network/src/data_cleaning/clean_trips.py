@@ -36,7 +36,7 @@ def check_has_high_speed(trip_buffer, timestamp_idx=4, lon_idx=3, lat_idx=2, spe
             continue
     return False
 
-def clean_trips(input_dir: string, output_dir: string):
+def clean_trips(input_dir: str, output_dir: str):
     os.makedirs(output_dir, exist_ok=True)
     csv_files = glob(os.path.join(input_dir, '*.csv'))
     for file in csv_files:

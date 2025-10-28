@@ -1,14 +1,16 @@
 import xml.etree.ElementTree as ET
-from collections import defaultdict
 import json
 import os 
+from typing import TypedDict, Optional, List, Dict, Set
 
-from typing import NamedTuple, Optional, List, Dict, Set
-
-class RoadInfo(NamedTuple):
+class RoadInfo(TypedDict):
     oneway: Optional[bool]
     road_type: Optional[str]
     nodes: List[str]
+
+class NodeInfo(TypedDict):
+    lat: float
+    lon: float
 
 
 def extract_roads(root: ET.Element,accepted_values: Set[str]) -> Dict[str, RoadInfo]:
@@ -35,20 +37,21 @@ def extract_roads(root: ET.Element,accepted_values: Set[str]) -> Dict[str, RoadI
             node_refs = []
             for nd in way.findall('nd'):
                 node_refs.append(nd.attrib['ref'])
-            roads[way.attrib['id']] = RoadInfo(oneway,road_type,node_refs)
-
+            roads[way.attrib['id']] = {
+                "oneway": oneway,
+                "road_type": road_type,
+                "nodes": node_refs
+            }
     return roads
 
-def extract_nodes(root) -> Dict[str, Dict[str, float]]:
-    nodes = {}
+def extract_nodes(root: ET.Element) -> Dict[str, NodeInfo]:
+    nodes: Dict[str, NodeInfo] = {}
     for node in root.findall('node'):
         node_id = node.attrib['id']
         nodes[node_id] = {
             'lat': float(node.attrib['lat']),
             'lon': float(node.attrib['lon'])
         }
-
-
 
     return nodes
 
@@ -67,21 +70,18 @@ def extract_map(input_dir: str, output_dir: str) -> None:
     'living_street', 'service', 'road' 
     }
     osm_file = os.path.join(input_dir, "map.osm")
-
+    print(osm_file)
 
     tree = ET.parse(osm_file)
     root = tree.getroot()
-    
     nodes = extract_nodes(root)
-
-    roads = extract_roads(root, accepted_values)
     nodes_file = os.path.join(output_dir, "osm_nodes_output.json")
-
     write_to_json(nodes,nodes_file)
 
-    roads = extract_roads(root, accepted_values)
-    roads_file = os.path.join(output_dir, "osm_roads_output.json")
 
+    roads = extract_roads(root, accepted_values)   
+    roads_file = os.path.join(output_dir, "osm_roads_output.json")
+    write_to_json(roads, roads_file)
 
 
     return None

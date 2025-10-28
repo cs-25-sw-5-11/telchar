@@ -1,7 +1,7 @@
 from classes.classes import Vertex, Edge
 from graph_building.build_graph import build_graph
 from graph_building.find_network import find_network
-from extract_osm_map.extract_osm_roads import extract_map
+from extract_osm_map.extract_osm_map import extract_map
 from data_cleaning.clean_trips import clean_trips
 from plotting.functions_plotting import plot_networks, plot_directed_graph
 
@@ -130,9 +130,9 @@ def process_trip_by_id(trip_id: int, df: pd.DataFrame) ->  tuple[list[Edge], lis
     return edges_in_path, best_path_vertex_coords, lats, lons
 
 def main() -> None:
-    extract_map("../data/input", "../data/cleaned_data")
-    clean_trips("../data/input", "../data/cleaned_data")
-    build_graph('../data/cleaned_data/osm_nodes_output.json', '../data/cleaned_data/osm_roads_output.json')
+    extract_map("data/input_data", "data/cleaned_data")
+    clean_trips("data/input_data", "data/cleaned_data")
+    build_graph('data/cleaned_data/osm_nodes_output.json', 'data/cleaned_data/osm_roads_output.json')
     network = find_network()
 
     if COMPARE_STATES:
@@ -143,7 +143,7 @@ def main() -> None:
 
     for trip_file in ['trips_150103.csv']:
         # Load and filter trip data
-        df = pd.read_csv(f'cleaned_data/{trip_file}')
+        df = pd.read_csv(f'data/cleaned_data/{trip_file}')
         next_writeout = WRITEOUT_INTERVAL
         max_trip = df['trip_id'].max()
 
