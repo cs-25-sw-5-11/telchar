@@ -1,10 +1,8 @@
-from classes.classes import Vertex
-from .filter_largest_network import filter_largest_network
+from classes import Network, Vertex
 from tqdm import tqdm
 
 def explore_neighbors(start_vertex: 'Vertex', visited: set['Vertex']) -> set['Vertex']:
     """DFS search for all neighbors"""
-
 
     stack = [start_vertex]
     subnetwork = set()
@@ -25,24 +23,29 @@ def find_road_subnetworks(vertices: list['Vertex'])-> list[set['Vertex']]:
     visited = set()
     connected_road_subnetworks = []
 
-
     for vertex in vertices:
         if vertex not in visited:
             subnetwork = explore_neighbors(vertex, visited)
             connected_road_subnetworks.append(subnetwork)
 
-
     return connected_road_subnetworks
 
+def filter_out_smaller_subnetworks(network: Network, subnetworks: list["Vertex"]) -> None:
+    print("Filtering out vertices and edges not belonging to the largest subnetwork...")
+    largest_subnetwork = max(subnetworks, key=len)
+    # Remove vertices not in largest subnetwork
+    to_remove_vertices = []
+    for vertex in tqdm(Network.get_all_vertices(), desc="Identifying vertices to remove"):
+        if vertex not in largest_subnetwork:
+            to_remove_vertices.append(vertex)
+    for vertex in tqdm(to_remove_vertices, desc="Deleting vertices"):
+        network.delete_vertex_by_id(vertex.id)
+    return
 
-
-
-def find_network() -> list[set['Vertex']]:
+def remove_small_subnetworks(network) -> list[set['Vertex']]:
     """Main function, finds all connected road networks"""
-    vertices = Vertex.get_all_vertices()
-    networks = find_road_subnetworks(vertices)
+    vertices = network.get_all_vertices()
+    subnetworks = find_road_subnetworks(vertices)
 
-    print(f"Number of networks (connected components): {len(networks)}")
-    filter_largest_network(networks)
-    
-    return networks
+    print(f"Number of subnetworks (connected components): {len(subnetworks)}")
+    filter_out_smaller_subnetworks(network, subnetworks)

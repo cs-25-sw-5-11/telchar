@@ -1,6 +1,6 @@
-from classes.classes import Vertex, Edge
+from classes import Network, Edge, Vertex
 from graph_building.build_graph import build_graph
-from graph_building.find_network import find_network
+from graph_building.filter_out_subnetworks import remove_small_subnetworks
 
 from plotting.functions_plotting import plot_networks, plot_directed_graph
 
@@ -130,8 +130,8 @@ def process_trip_by_id(trip_id: int, df: pd.DataFrame) ->  tuple[list[Edge], lis
 
 def main() -> None:
 
-    build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
-    network = find_network()
+    network = build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
+    remove_small_subnetworks(network)
 
     if COMPARE_STATES:
         # Capture original state for later comparison
