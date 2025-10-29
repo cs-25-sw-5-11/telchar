@@ -1,72 +1,117 @@
 import os
 from glob import glob
 from utils.functions_misc import haversine
-import configs.config
-
-def check_has_repeated_timestamp(trip_buffer, timestamp_idx=4):
-    for i in range(1, len(trip_buffer)):
-        if trip_buffer[i][timestamp_idx] == trip_buffer[i-1][timestamp_idx]:
+from configs.config import TRIP_ID_COLUMN,LAT_ID_COLUMN, LON_ID_COLUMN, TIMESTAMP_COLUMN
+from typing import List, TextIO
+def check_has_repeated_timestamp(current_trip_rows, timestamp_idx=4):
+    for i in range(1, len(current_trip_rows)):
+        if current_trip_rows[i][timestamp_idx] == current_trip_rows[i-1][timestamp_idx]:
             return True
     return False
 
-def check_has_high_speed(trip_buffer, timestamp_idx=4, lon_idx=3, lat_idx=2, speed_limit=150):
+def check_has_high_speed(current_trip_rows, timestamp_idx=4, lon_idx=3, lat_idx=2, speed_limit=150):
     
-    for i in range(1, len(trip_buffer)):
+    for i in range(1, len(current_trip_rows)):
         try:
-            t1 = float(trip_buffer[i][timestamp_idx])
-            t0 = float(trip_buffer[i-1][timestamp_idx])
+            t1 = float(current_trip_rows[i][timestamp_idx])
+            t0 = float(current_trip_rows[i-1][timestamp_idx])
             diff = t1 - t0
             if diff <= 0:
                 continue
-            lon1 = float(trip_buffer[i][lon_idx])
-            lat1 = float(trip_buffer[i][lat_idx])
-            lon0 = float(trip_buffer[i-1][lon_idx])
-            lat0 = float(trip_buffer[i-1][lat_idx])
+            lon1 = float(current_trip_rows[i][lon_idx])
+            lat1 = float(current_trip_rows[i][lat_idx])
+            lon0 = float(current_trip_rows[i-1][lon_idx])
+            lat0 = float(current_trip_rows[i-1][lat_idx])
             dist = haversine(lon0, lat0, lon1, lat1)
             speed = dist / (diff / 3600.0)
             if speed > speed_limit:
                 return True
-        except Exception:
+        except (ValueError,IndexError):
             continue
     return False
+
+def get_csv_files(input_dir: str) -> List[str]:
+    files = glob(os.path.join(input_dir, '*.csv'))
+    return files
+
+def read_relevant_headers(file_obj: TextIO, relevant_cols: List[int]) -> List[str]:
+
+    header_parts = file_obj.readline().strip().split(',')
+    header = []
+
+    for i in relevant_cols:
+        if i < len(header_parts):
+            header.append(header_parts[i])
+    return header
+
+def is_valid_trip(trip_rows: List[List[str]], ts_idx: int, lon_idx: int, lat_idx: int) -> bool:
+    repeated_timestamp = check_has_repeated_timestamp(trip_rows,ts_idx)
+    high_speed = check_has_high_speed(trip_rows,ts_idx, lon_idx, lat_idx)
+
+    return not(repeated_timestamp or high_speed)
+
+def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List[str]]:
+    selected_rows = []
+    for row in rows:
+        selected_row = []
+        for i in cols:
+            selected_row.append(row[i])
+        selected_rows.append(selected_row)
+    return selected_rows
+
+
+
+def process_trip_file(file_path: str, relevant_cols: List[int]) -> tuple[List[str], List[List[str]]]:
+
+    with open(file_path, 'r', encoding='utf-8') as f:
+        header = read_relevant_headers(f, relevant_cols)
+
+        trip_id_idx, lon_idx, lat_idx, timestamp_idx = relevant_cols
+
+        cleaned_rows = []
+        current_trip_rows = []
+        prev_trip_id = None
+
+        for line in f:
+            values = line.strip().split(',')
+            if len(values) <= max(relevant_cols):
+                continue
+
+            trip_id = values[trip_id_idx]
+
+
+            if prev_trip_id is not None and trip_id != prev_trip_id:
+                if is_valid_trip(current_trip_rows, timestamp_idx, lon_idx, lat_idx):
+                    cleaned_rows.extend(select_relevant_columns(current_trip_rows,relevant_cols))
+                current_trip_rows = []
+
+            current_trip_rows.append(values)
+            prev_trip_id = trip_id
+                
+            
+        # handle last trip
+        if current_trip_rows and is_valid_trip(current_trip_rows, timestamp_idx, lon_idx, lat_idx):
+            cleaned_rows.extend(select_relevant_columns(current_trip_rows, relevant_cols))
+                    
+
+    return header, cleaned_rows
+
+
 
 
 
 def clean_trips(input_dir: str, output_dir: str):
+    os.makedirs(output_dir, exist_ok=True)
+    relevant_cols = [TRIP_ID_COLUMN,LON_ID_COLUMN,LAT_ID_COLUMN,TIMESTAMP_COLUMN]
     
-    csv_files = glob(os.path.join(input_dir, '*.csv'))
-    for file in csv_files:
-        with open(file, 'r', encoding='utf-8') as f:
-            relevant_cols = [config.TRIP_ID_COLUMN, config.TIMESTAMP_COLUMN,config.LON_ID_COLUMN,config.LAT_ID_COLUMN]
-            header_parts = f.readline().strip().split(',')
-            #trip_id_idx = 0
-            #lat_idx = 2
-            #lon_idx = 3
-            #timestamp_idx = 4
-            cleaned_lines = [header]
-            trip_buffer = []
-            prev_trip_id = None
-            for line in f:
-                parts = line.strip().split(',')
-                if len(parts) <= max(trip_id_idx, timestamp_idx, lon_idx, lat_idx):
-                    continue
-                trip_id = parts[trip_id_idx]
-                # If new trip, flush buffer
-                if prev_trip_id is not None and trip_id != prev_trip_id:
-                    if not check_has_repeated_timestamp(trip_buffer, timestamp_idx) and not check_has_high_speed(trip_buffer, timestamp_idx, lon_idx, lat_idx):
-                        for l in trip_buffer:
-                            cleaned_lines.append(','.join(l))
-                    trip_buffer = []
-                trip_buffer.append(parts)
-                prev_trip_id = trip_id
-            # Handle last trip
-            if trip_buffer:
-                if not check_has_repeated_timestamp(trip_buffer, timestamp_idx) and not check_has_high_speed(trip_buffer, timestamp_idx, lon_idx, lat_idx):
-                    for l in trip_buffer:
-                        cleaned_lines.append(','.join(l))
+    csv_files = get_csv_files(input_dir)
+    for file_path in csv_files:
+        header, cleaned_rows = process_trip_file(file_path, relevant_cols)
+    
         # Write cleaned file
-        out_file = os.path.join(output_dir, os.path.basename(file))
+        out_file = os.path.join(output_dir, os.path.basename(file_path))
         with open(out_file, 'w', encoding='utf-8') as fout:
-            for l in cleaned_lines:
-                fout.write(l if l.endswith('\n') else l + '\n')
+            fout.write(','.join(header) + '\n')
+            for row in cleaned_rows:
+                fout.write(','.join(row) + '\n')
 
