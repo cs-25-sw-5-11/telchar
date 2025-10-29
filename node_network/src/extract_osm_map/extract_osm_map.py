@@ -70,10 +70,12 @@ def extract_map(input_dir: str, output_dir: str) -> None:
     'living_street', 'service', 'road' 
     }
     osm_file = os.path.join(input_dir, "map.osm")
-    print(osm_file)
 
     tree = ET.parse(osm_file)
     root = tree.getroot()
+
+    os.makedirs(output_dir, exist_ok=True)
+
     nodes = extract_nodes(root)
     nodes_file = os.path.join(output_dir, "osm_nodes_output.json")
     write_to_json(nodes,nodes_file)
