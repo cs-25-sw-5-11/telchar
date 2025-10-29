@@ -17,8 +17,12 @@ METERS_PER_DEGREE = 92800  # Approximate meters per degree for this region
 # Longitude: min=126.50613, max=126.77186
 
 
-# column number from data in csv files
-TRIP_ID_COLUMN = 0
-LAT_ID_COLUMN = 2
-LON_ID_COLUMN = 3
-TIMESTAMP_COLUMN = 4
+# column number from data in uncleaned csv files
+PRE_TRIP_ID_COLUMN = 0
+PRE_LAT_ID_COLUMN = 2
+PRE_LON_ID_COLUMN = 3
+PRE_TIMESTAMP_COLUMN = 4
+
+
+#speed limit for cleaning trips
+SPEED_LIMIT = 150

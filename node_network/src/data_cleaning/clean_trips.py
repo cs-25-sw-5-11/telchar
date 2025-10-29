@@ -1,15 +1,17 @@
 import os
 from glob import glob
 from utils.functions_misc import haversine
-from configs.config import TRIP_ID_COLUMN,LAT_ID_COLUMN, LON_ID_COLUMN, TIMESTAMP_COLUMN
+from configs.config import PRE_TRIP_ID_COLUMN,PRE_LAT_ID_COLUMN, PRE_LON_ID_COLUMN, PRE_TIMESTAMP_COLUMN, SPEED_LIMIT
 from typing import List, TextIO
+import csv
 def check_has_repeated_timestamp(current_trip_rows, timestamp_idx=4):
     for i in range(1, len(current_trip_rows)):
         if current_trip_rows[i][timestamp_idx] == current_trip_rows[i-1][timestamp_idx]:
             return True
     return False
 
-def check_has_high_speed(current_trip_rows, timestamp_idx=4, lon_idx=3, lat_idx=2, speed_limit=150):
+def check_has_high_speed(current_trip_rows, timestamp_idx, lon_idx, lat_idx):
+    speed_limit = SPEED_LIMIT
     
     for i in range(1, len(current_trip_rows)):
         try:
@@ -34,14 +36,13 @@ def get_csv_files(input_dir: str) -> List[str]:
     files = glob(os.path.join(input_dir, '*.csv'))
     return files
 
-def read_relevant_headers(file_obj: TextIO, relevant_cols: List[int]) -> List[str]:
-
-    header_parts = file_obj.readline().strip().split(',')
+def read_relevant_headers(header_row: List[str], relevant_cols: List[int]) -> List[str]:
+    
     header = []
 
     for i in relevant_cols:
-        if i < len(header_parts):
-            header.append(header_parts[i])
+        if i < len(header_row):
+            header.append(header_row[i])
     return header
 
 def is_valid_trip(trip_rows: List[List[str]], ts_idx: int, lon_idx: int, lat_idx: int) -> bool:
@@ -64,7 +65,9 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
 def process_trip_file(file_path: str, relevant_cols: List[int]) -> tuple[List[str], List[List[str]]]:
 
     with open(file_path, 'r', encoding='utf-8') as f:
-        header = read_relevant_headers(f, relevant_cols)
+        reader = csv.reader(f)
+        header_row = next(reader)
+        header = read_relevant_headers(header_row, relevant_cols)
 
         trip_id_idx, lon_idx, lat_idx, timestamp_idx = relevant_cols
 
@@ -72,12 +75,11 @@ def process_trip_file(file_path: str, relevant_cols: List[int]) -> tuple[List[st
         current_trip_rows = []
         prev_trip_id = None
 
-        for line in f:
-            values = line.strip().split(',')
-            if len(values) <= max(relevant_cols):
+        for row in reader:
+            if len(row) <= max(relevant_cols):
                 continue
 
-            trip_id = values[trip_id_idx]
+            trip_id = row[trip_id_idx]
 
 
             if prev_trip_id is not None and trip_id != prev_trip_id:
@@ -85,7 +87,7 @@ def process_trip_file(file_path: str, relevant_cols: List[int]) -> tuple[List[st
                     cleaned_rows.extend(select_relevant_columns(current_trip_rows,relevant_cols))
                 current_trip_rows = []
 
-            current_trip_rows.append(values)
+            current_trip_rows.append(row)
             prev_trip_id = trip_id
                 
             
@@ -100,9 +102,9 @@ def process_trip_file(file_path: str, relevant_cols: List[int]) -> tuple[List[st
 
 
 
-def clean_trips(input_dir: str, output_dir: str):
+def clean_trips(input_dir: str, output_dir: str) -> None:
     os.makedirs(output_dir, exist_ok=True)
-    relevant_cols = [TRIP_ID_COLUMN,LON_ID_COLUMN,LAT_ID_COLUMN,TIMESTAMP_COLUMN]
+    relevant_cols = [PRE_TRIP_ID_COLUMN,PRE_LON_ID_COLUMN,PRE_LAT_ID_COLUMN,PRE_TIMESTAMP_COLUMN]
     
     csv_files = get_csv_files(input_dir)
     for file_path in csv_files:
@@ -114,4 +116,4 @@ def clean_trips(input_dir: str, output_dir: str):
             fout.write(','.join(header) + '\n')
             for row in cleaned_rows:
                 fout.write(','.join(row) + '\n')
-
+    return None
