@@ -141,7 +141,7 @@ def main() -> None:
 
     # print(all_pairs_network_distances_between_layers(vertex_layers[0], vertex_layers[1]))    
 
-    for trip_file in ['trips_150103.csv']:
+    for trip_file in ['trips_150105.csv']:
         # Load and filter trip data
         df = pd.read_csv(f'data/cleaned_data/{trip_file}')
         next_writeout = WRITEOUT_INTERVAL
