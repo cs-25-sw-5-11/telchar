@@ -15,17 +15,19 @@ def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:
 def check_has_high_speed(trip_rows, timestamp_idx, lat_idx, lon_idx) -> bool:
 
     rows = np.array(trip_rows, dtype=float)
+    rows = np.round(rows,5)
+
     timestamps = rows[:, timestamp_idx]
     lats = rows[:, lat_idx]
     lons = rows[:, lon_idx]
-    rows = np.round(rows,5)
+    
     dt = np.diff(timestamps)
 
     valid = dt > 0
     if not np.any(valid):
         return False
 
-    dists = vector_haversine(lats[:-1], lons[:-1],lats[:1],lons[:1])
+    dists = vector_haversine(lats[:-1], lons[:-1],lats[1:],lons[1:])
 
     speeds = dists/ (dt/3600.0)
 
