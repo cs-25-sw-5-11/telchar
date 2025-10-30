@@ -3,15 +3,15 @@ from glob import glob
 from utils.functions_misc import haversine
 from utils.csv_io import read_csv_stream
 from configs.config import PRE_TRIP_ID_COLUMN,PRE_LAT_COLUMN, PRE_LON_COLUMN, PRE_TIMESTAMP_COLUMN, SPEED_LIMIT
-from typing import List, TextIO
+from typing import List, TextIO, Iterable
 import csv
-def check_has_repeated_timestamp(current_trip_rows, timestamp_idx):
+def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:
     for i in range(1, len(current_trip_rows)):
         if current_trip_rows[i][timestamp_idx] == current_trip_rows[i-1][timestamp_idx]:
             return True
     return False
 
-def check_has_high_speed(current_trip_rows, timestamp_idx, lat_idx, lon_idx):
+def check_has_high_speed(current_trip_rows, timestamp_idx, lat_idx, lon_idx) -> bool:
     speed_limit = SPEED_LIMIT
     
     for i in range(1, len(current_trip_rows)):
@@ -33,6 +33,7 @@ def check_has_high_speed(current_trip_rows, timestamp_idx, lat_idx, lon_idx):
             continue
     return False
 
+
 def get_csv_files(input_dir: str) -> List[str]:
     files = glob(os.path.join(input_dir, '*.csv'))
     return files
@@ -50,7 +51,7 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
 
 
 
-def process_and_write_trip_stream(stream, writer, relevant_cols) -> None:
+def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.writer, relevant_cols: List[int]) -> None:
 
     trip_id_idx, lat_idx, lon_idx, timestamp_idx = 0,1,2,3
 
@@ -65,9 +66,11 @@ def process_and_write_trip_stream(stream, writer, relevant_cols) -> None:
 
         trip_id = row[trip_id_idx]
 
-        if prev_trip_id is not None and trip_id != prev_trip_id:
-            if current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
-                print(f"Trip {prev_trip_id} has {len(current_trip)} rows")
+        is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id
+        
+
+        if is_new_trip:
+            if  current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
                 writer.writerows(current_trip)
             current_trip = []
         current_trip.append(row)
@@ -79,7 +82,7 @@ def process_and_write_trip_stream(stream, writer, relevant_cols) -> None:
         writer.writerows(current_trip)
                 
 
-    return 
+    return None
 
 
 
