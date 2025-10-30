@@ -12,14 +12,12 @@ logger = logging.getLogger(__name__)
 class Vertex:
     """Represents a vertex/node in the graph"""
     
-    def __init__(self, network: Network, lat: float, lon: float, node_id: Optional[int] = None, temporary: bool = False):
+    def __init__(self, network: Network, lat: float, lon: float, node_id: Optional[int] = None):
         self._network = network
         self.lat = lat
         self.lon = lon
         self.onward_edges: Dict['Edge', 'Vertex'] = {}
         self.backward_edges: Dict['Edge', 'Vertex'] = {}
-        self.parent_edge: Optional['Edge'] = None
-        self.is_temporary = bool(temporary)
         
         # Set ID
         if node_id is None:

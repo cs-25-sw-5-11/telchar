@@ -178,6 +178,7 @@ class Edge:
             if dx == 0 and dy == 0:
                 # Degenerate segment (zero length)
                 proj = (x0, y0)
+                t = 0.0
             else:
                 # Project point onto line segment
                 t = ((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy)
@@ -190,6 +191,7 @@ class Edge:
                 min_dist_sq = dist_sq
                 proj_point = proj
                 seg_idx = i
+                seg_t = t
         
         if proj_point is not None:
             # Convert distance from degrees to meters using region-specific constant
@@ -198,7 +200,25 @@ class Edge:
         else:
             min_dist_m = None
             
-        return (*proj_point, min_dist_m, seg_idx)
+        return (*proj_point, min_dist_m, seg_idx, seg_t)
+    
+    def get_projection_distance_from_start(self, seg_idx: int, seg_t: float) -> float:
+        """Get distance along edge from start vertex to projected point"""
+        points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
+        total_distance = 0.0
+        
+        # Sum distances of full segments before seg_idx
+        for i in range(seg_idx):
+            total_distance += haversine(points[i][0], points[i][1], points[i+1][0], points[i+1][1])
+        
+        # Add distance of partial segment at seg_idx
+        if seg_idx < len(points) - 1:
+            lat1, lon1 = points[seg_idx]
+            lat2, lon2 = points[seg_idx + 1]
+            segment_length = haversine(lat1, lon1, lat2, lon2)
+            total_distance += segment_length * seg_t
+        
+        return total_distance
     
     def split_edge_along_vertex(self, vertex: 'Vertex', temporary: bool = False) -> Optional[Tuple['Edge', 'Edge']]:
         """Split edge along a vertex that lies on the edge (finds vertex by ID in non_vertex_nodes)"""

@@ -20,7 +20,7 @@ def create_edges_and_vertices_from_roads(network: Network, road: dict[str,any], 
         return
         
     road_type = road.get('type', 'unknown')
-    oneway = road.get('oneway', False) is True
+    oneway = road.get('oneway', True) is True
     
     # Create vertices for start and end of road
     start_node_id = nodes[0]

@@ -8,6 +8,8 @@ import numpy as np
 from . import Edge, Vertex
 import heapq
 from tqdm import tqdm
+from utils.functions_misc import get_bin_indices
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +31,50 @@ class Network:
         self._distance_matrix: Optional[np.ndarray] = None
         self._vertex_id_to_index: Dict[int, int] = {}
         self._index_to_vertex_id: Dict[int, int] = {}
+
+    def get_edges_near_coordinate(self, lat: float, lon: float) -> Set['Edge']:
+        """Return all edges near a given coordinate.
+        Includes edges in the bin containing the coordinate and the 3 
+        bins sharing the edge the coordinate is closest to."""
+        nearby_edges: Set['Edge'] = set()
+        nearby_bins = self._get_bins_near_point(lat, lon)
+        for lat_idx, lon_idx in nearby_bins:
+            edges_in_bin = self.get_edges_in_bin(lat_idx, lon_idx)
+            nearby_edges.update(edges_in_bin)
+
+        return nearby_edges
+    
+    def _get_bins_near_point(self, lat: float, lon: float, range: int=0) -> List[Tuple[int, int]]:
+        idx = get_bin_indices(lat, lon)
+        if idx is None:
+            raise ValueError(f"Coordinates (lat={lat}, lon={lon}) are out of bounds for the configured bins.")
+        lat_idx, lon_idx = idx
+
+        if range==0:
+            # Check which corner the edge is closest to
+            if lat % LAT_BIN_SIZE < LAT_BIN_SIZE / 2:
+                if lon % LON_BIN_SIZE < LON_BIN_SIZE / 2:
+                    # Bottom-left corner
+                    offsets = [(0, 0), (-1, 0), (0, -1), (-1, -1)]
+                else:
+                    # Bottom-right corner
+                    offsets = [(0, 0), (-1, 0), (0, 1), (-1, 1)]
+            else:
+                if lon % LON_BIN_SIZE < LON_BIN_SIZE / 2:
+                    # Top-left corner
+                    offsets = [(0, 0), (1, 0), (0, -1), (1, -1)]
+                else:
+                    # Top-right corner
+                    offsets = [(0, 0), (1, 0), (0, 1), (1, 1)]
+        else:
+            # Not currently supported, raise error.
+            raise NotImplementedError("Range > 0 not currently supported in _get_bins_near_point.")
+
+        bins = []
+        for d_lat, d_lon in offsets:
+            bins.append((lat_idx + d_lat, lon_idx + d_lon))
+
+        return bins
 
     def compute_all_pairs_shortest_paths(self):
         """Precompute shortest distances between all vertex pairs using Dijkstra from each vertex."""
@@ -92,8 +138,10 @@ class Network:
         
         return distances
     
-    def get_distance(self, source_id: int, target_id: int) -> float | None:
+    def get_distance(self, source: Vertex, target: Vertex) -> float | None:
         """Get precomputed distance between two vertices."""
+        source_id = source.id
+        target_id = target.id
         if not self._distances_computed:
             raise RuntimeError("Distances not available. Call load_or_compute_all_pairs_distances() first.")
         
@@ -106,8 +154,9 @@ class Network:
         distance_cm = self._distance_matrix[source_idx, target_idx]
         # Check if distance is the "infinity" value (unreachable)
         if distance_cm == np.iinfo(np.int32).max:
-            return None
-        
+            logger.warning(f"Vertex {target_id} is not reachable from Vertex {source_id}.")
+            return np.int32().max()
+            
         # Convert back from centimeters to meters
         return float(distance_cm) / 100.0
     
@@ -214,8 +263,8 @@ class Network:
         self._vertices[vertex.id] = vertex
         vertex._network = self
         
-        if vertex.is_temporary:
-            self._temporary_vertices.add(vertex)
+        # if vertex.is_temporary:
+        #     self._temporary_vertices.add(vertex)
         
         # Update bin lookup
         if vertex.bin_coords:

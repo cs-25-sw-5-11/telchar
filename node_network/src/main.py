@@ -1,6 +1,7 @@
-from classes import Network, Edge, Vertex
+from classes import Network, Edge, Vertex, Trip
 from graph_building.build_graph import build_graph
 from graph_building.filter_out_subnetworks import remove_small_subnetworks
+import numpy as np
 
 # from plotting.functions_plotting import plot_networks, plot_directed_graph
 
@@ -137,6 +138,43 @@ def main() -> None:
     network.load_or_compute_all_pairs_distances(distances_file='all_pairs_distances.npy',
                                                 mapping_file='vertex_id_mapping.json')
 
+    for trip_file in ['trips_150103.csv']:
+        # Load and filter trip data
+        df = pd.read_csv(f'cleaned_data/{trip_file}')
+        next_writeout = WRITEOUT_INTERVAL
+        max_trip = df['trip_id'].max()
+
+        lats = None
+        lons = None
+        times = None
+
+        for trip_id in tqdm(range(6, 7), desc=f"Processing trips in {trip_file}"):
+            # Get lats, lons, times where trip ID matches
+            group = df[df['trip_id'] == trip_id]
+            lats = group['latitude'].tolist()
+            lons = group['longitude'].tolist()
+            times = (group['timestamp'] - UNIX_REFERENCE).tolist()
+
+            trip = Trip(trip_id, lats, lons, times)
+            result = trip.compute_layer_distances(network, max_dist=MAX_DIST)
+
+            plt.figure(figsize=(12, 10))
+            # Plot each layer in projection_layers in different colors
+            colors = plt.cm.viridis_r(np.linspace(0, 1, len(trip._projection_layers)))
+            for i, layer in enumerate(trip._projection_layers):
+                layer_lats = [item.lat for item in layer]
+                layer_lons = [item.lon for item in layer]
+                plt.scatter(layer_lons, layer_lats, s=10, color=colors[i], alpha=0.6)
+
+            plt.title(f"Trip ID {trip_id} Projections")
+            plt.xlabel("Longitude")
+            plt.ylabel("Latitude")
+            plt.grid(True)
+            plt.show()
+
+            
+            with open('temp.json', 'w') as f:
+                f.write(json.dumps(result))
     return
 
     # Reset all vertex and edge IDs to start from 0 and be sequential.
