@@ -15,19 +15,23 @@ def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:
 def check_has_high_speed(trip_rows, timestamp_idx, lat_idx, lon_idx) -> bool:
 
     rows = np.array(trip_rows, dtype=float)
-    rows = np.round(rows,5)
-
     timestamps = rows[:, timestamp_idx]
     lats = rows[:, lat_idx]
     lons = rows[:, lon_idx]
+
     
     dt = np.diff(timestamps)
-
+    dists = vector_haversine(lats[:-1], lons[:-1],lats[1:],lons[1:])
+    
     valid = dt > 0
     if not np.any(valid):
         return False
 
-    dists = vector_haversine(lats[:-1], lons[:-1],lats[1:],lons[1:])
+    dt = dt[valid]
+    dists = dists[valid]
+
+
+   
 
     speeds = dists/ (dt/3600.0)
 
@@ -63,9 +67,15 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
 
         if len(row) < max(relevant_cols):
             continue
+        
+        new_row = row.copy()
+        try:
+            new_row[lat_idx] = f"{round(float(new_row[lat_idx]), 5)}"
+            new_row[lon_idx] = f"{round(float(new_row[lon_idx]), 5)}"
+        except ValueError:
+            pass 
 
-
-        trip_id = row[trip_id_idx]
+        trip_id = new_row[trip_id_idx]
 
         is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id
         
@@ -74,7 +84,7 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
             if  current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
                 writer.writerows(current_trip)
             current_trip = []
-        current_trip.append(row)
+        current_trip.append(new_row)
         prev_trip_id = trip_id
             
         
@@ -100,6 +110,7 @@ def clean_trips(input_dir: str, output_dir: str) -> None:
     
 
     for file_path in get_csv_files(input_dir):
+        print(f"cleaning csv {file_path}")
         stream = read_csv_stream(file_path, relevant_cols)
         header = next(stream)
     
