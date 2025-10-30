@@ -4,12 +4,18 @@ import json
 
 logger = logging.getLogger(__name__)
 
+from numba import njit
+
+@njit(fastmath=True, cache=True)
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000
-    phi1, phi2 = radians(lat1), radians(lat2)
-    dphi = radians(lat2 - lat1)
-    dlambda = radians(lon2 - lon1)
-    a = sin(dphi/2)**2 + cos(phi1)*cos(phi2)*sin(dlambda/2)**2
+    R = 6371000.0  # meters
+    lat1 = radians(lat1)
+    lon1 = radians(lon1)
+    lat2 = radians(lat2)
+    lon2 = radians(lon2)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
     return 2 * R * atan2(sqrt(a), sqrt(1 - a))
 
 def get_time_index(timestamp: int, reference: int, interval: int) -> int:

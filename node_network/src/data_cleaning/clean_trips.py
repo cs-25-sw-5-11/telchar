@@ -41,8 +41,6 @@ def is_valid_trip(trip_rows: List[List[str]], ts_idx: int, lat_idx: int, lon_idx
     repeated_timestamp = check_has_repeated_timestamp(trip_rows,ts_idx)
 
     high_speed = check_has_high_speed(trip_rows,ts_idx, lat_idx, lon_idx)
-    if high_speed:
-        print("high speed found")
 
     return not(repeated_timestamp or high_speed)
 
@@ -69,7 +67,7 @@ def process_and_write_trip_stream(stream, writer, relevant_cols) -> None:
 
         if prev_trip_id is not None and trip_id != prev_trip_id:
             if current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
-                print(f"Writing trip with {len(current_trip)} rows")
+                print(f"Trip {prev_trip_id} has {len(current_trip)} rows")
                 writer.writerows(current_trip)
             current_trip = []
         current_trip.append(row)
