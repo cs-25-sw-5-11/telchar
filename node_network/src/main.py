@@ -2,12 +2,10 @@ from classes import Network, Edge, Vertex
 from graph_building.build_graph import build_graph
 from graph_building.filter_out_subnetworks import remove_small_subnetworks
 
-from plotting.functions_plotting import plot_networks, plot_directed_graph
+# from plotting.functions_plotting import plot_networks, plot_directed_graph
 
 from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
-
-from utils.functions_misc import get_time_index,writeout_traversals_to_json,restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states
-
+from utils.functions_misc import get_time_index,writeout_traversals_to_json
 from viterbi.viterbi import viterbi_algorithm
 
 import matplotlib.pyplot as plt
@@ -103,7 +101,7 @@ def writeout_final_result() -> None:
 
     return None
 
-def process_trip_by_id(trip_id: int, df: pd.DataFrame) ->  tuple[list[Edge], list[tuple[float,float]], list[float], list[float]]| None:
+def process_trip_by_id(trip_id: int, df: pd.DataFrame) ->  tuple[list['Edge'], list[tuple[float,float]], list[float], list[float]]| None:
     result = extract_trip(df, trip_id)
     if result is None:
         return None
@@ -131,11 +129,20 @@ def process_trip_by_id(trip_id: int, df: pd.DataFrame) ->  tuple[list[Edge], lis
 def main() -> None:
 
     network = build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
+    print(network.get_stats())
+
     remove_small_subnetworks(network)
+    print(len(network.get_all_vertices()), "vertices after filtering.")
+
+    network.load_or_compute_all_pairs_distances(distances_file='all_pairs_distances.npy',
+                                                mapping_file='vertex_id_mapping.json')
+
+    return
+
+    # Reset all vertex and edge IDs to start from 0 and be sequential.
 
     if COMPARE_STATES:
-        # Capture original state for later comparison
-        original_state = capture_network_state()
+        network_original = network.copy()
 
     # print(all_pairs_network_distances_between_layers(vertex_layers[0], vertex_layers[1]))    
 
@@ -149,10 +156,10 @@ def main() -> None:
         lons = None
         best_path_vertex_coords = None
 
-        for trip_id in tqdm(range(3, 8), desc=f"Processing trips in {trip_file}"):
+        for trip_id in tqdm(range(6, 7), desc=f"Processing trips in {trip_file}"):
             # Reset network state before processing each trip.
             # Here instead of at the end due to possible early continues.
-            restore_network_to_original_state()
+            network.undo_temporary_modifications()
 
             # Writeout intermediate results periodically.
             # Needs to be right after restoration to avoid getting temporary edges.
@@ -166,20 +173,20 @@ def main() -> None:
             edges_in_path, best_path_vertex_coords, lats, lons = result
 
     # Final cleanup.
-    restore_network_to_original_state()
+    network.undo_temporary_modifications()
     print("Final writeout of edge traversal data...")
     writeout_traversals_to_json(file_path='edge_traversals.json', 
                                 edge_items=Edge.get_all_edges())
 
-    if PLOT:
-        plot_directed_graph(lat_min=45.62, lat_max=45.77, lon_min=126.65, lon_max=126.75,
-                            trip_point_lats=lats, trip_point_lons=lons, max_dist=MAX_DIST,
-                            best_path_vertex_coords=best_path_vertex_coords)
+    # if PLOT:
+    #     plot_directed_graph(lat_min=45.62, lat_max=45.77, lon_min=126.65, lon_max=126.75,
+    #                         trip_point_lats=lats, trip_point_lons=lons, max_dist=MAX_DIST,
+    #                         best_path_vertex_coords=best_path_vertex_coords)
 
     if COMPARE_STATES:
-        # Validate integrity after restoration
-        restored_state = capture_network_state()
-        compare_network_states(original_state, restored_state)
+        network.reset_id_counters()
+        if not network == network_original:
+            print("Network state mismatch after processing trips!")
 
     # Write vertex connections to json file
     writeout_final_result()

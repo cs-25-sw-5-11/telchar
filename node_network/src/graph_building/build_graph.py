@@ -30,9 +30,14 @@ def create_edges_and_vertices_from_roads(network: Network, road: dict[str,any], 
     start_node_data = nodes_dict[start_node_id]
     end_node_data = nodes_dict[end_node_id]
     
-    # Constructor automatically returns existing vertex if ID already exists
-    start_vertex = Vertex(network, start_node_data['lat'], start_node_data['lon'], int(start_node_id))
-    end_vertex = Vertex(network, end_node_data['lat'], end_node_data['lon'], int(end_node_id))
+    # Get existing vertex or create new one
+    start_vertex = network.get_vertex_by_id(int(start_node_id))
+    if start_vertex is None:
+        start_vertex = Vertex(network, start_node_data['lat'], start_node_data['lon'], int(start_node_id))
+    
+    end_vertex = network.get_vertex_by_id(int(end_node_id))
+    if end_vertex is None:
+        end_vertex = Vertex(network, end_node_data['lat'], end_node_data['lon'], int(end_node_id))
 
     # All intermediate nodes are non-vertex nodes for now
     non_vertex_nodes = []
@@ -92,6 +97,8 @@ def build_graph(nodes_file: str, roads_file: str) -> Network:
     print("Step 4: Splitting edges at intersection points...")
     # Step 4: Split edges where non-vertex nodes should actually be vertices
     edges_to_process = network.get_all_edges()  # Get current edges
-    process_edges_to_split(edges_to_process, should_be_vertices)
+    process_edges_to_split(network, edges_to_process, should_be_vertices)
     
     print("Graph building complete.")
+
+    return network

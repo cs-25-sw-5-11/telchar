@@ -2,7 +2,12 @@ from __future__ import annotations
 from typing import Tuple, Set, Optional, Dict, List
 import logging
 import copy
+import json
+import os
+import numpy as np
 from . import Edge, Vertex
+import heapq
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +23,192 @@ class Network:
         self._detached_edges: Set['Edge'] = set()
         self._edge_id_counter: int = 0
         self._edge_bin_lookup: Dict[Tuple[int, int], List['Edge']] = {}
+
+        self._all_pairs_distances: Dict[int, Dict[int, float]] = {}
+        self._distances_computed: bool = False
+        self._distance_matrix: Optional[np.ndarray] = None
+        self._vertex_id_to_index: Dict[int, int] = {}
+        self._index_to_vertex_id: Dict[int, int] = {}
+
+    def compute_all_pairs_shortest_paths(self):
+        """Precompute shortest distances between all vertex pairs using Dijkstra from each vertex."""
+        print("Computing all-pairs shortest distances...")
+        vertices = self.get_all_vertices()
+        
+        # Create vertex ID to matrix index mapping
+        self._create_vertex_index_mapping(vertices)
+        
+        # Initialize distance matrix with a large value representing infinity for int32
+        # int32 max value is far larger than any realistic distance in a network, so
+        # it's used to cut down on memory usage.
+        n = len(vertices)
+        INF_VALUE = np.iinfo(np.int32).max
+        self._distance_matrix = np.full((n, n), INF_VALUE, dtype=np.int32)
+        
+        for source_vertex in tqdm(vertices, desc="Computing distances"):
+            distances = self._dijkstra_algorithm(source_vertex)
+            source_idx = self._vertex_id_to_index[source_vertex.id]
+            
+            # Fill matrix row for this source vertex
+            for target_id, distance in distances.items():
+                target_idx = self._vertex_id_to_index[target_id]
+                # Convert to centimeters and store as integer
+                distance_cm = int(distance * 100)
+                self._distance_matrix[source_idx, target_idx] = distance_cm
+        
+        self._distances_computed = True
+        print(f"Computed distances for {len(vertices)} vertices")
     
+    def _create_vertex_index_mapping(self, vertices: List['Vertex']) -> None:
+        """Create bidirectional mapping between vertex IDs and matrix indices."""
+        self._vertex_id_to_index.clear()
+        self._index_to_vertex_id.clear()
+        
+        for idx, vertex in enumerate(vertices):
+            self._vertex_id_to_index[vertex.id] = idx
+            self._index_to_vertex_id[idx] = vertex.id
+    
+    def _dijkstra_algorithm(self, source_vertex) -> dict[int, float]:
+        """Run Dijkstra from a single source vertex to all other vertices."""
+        distances = {source_vertex.id: 0.0}
+        heap = [(0.0, source_vertex.id)]
+        visited = set()
+        
+        while heap:
+            current_dist, current_id = heapq.heappop(heap)
+            
+            if current_id in visited:
+                continue
+            visited.add(current_id)
+            
+            current_vertex: Vertex = self.get_vertex_by_id(current_id)
+            for edge in current_vertex.get_outward_edges():
+                neighbor_id = edge.end.id
+                new_dist = current_dist + edge.length
+                
+                if neighbor_id not in distances or new_dist < distances[neighbor_id]:
+                    distances[neighbor_id] = new_dist
+                    heapq.heappush(heap, (new_dist, neighbor_id))
+        
+        return distances
+    
+    def get_distance(self, source_id: int, target_id: int) -> float | None:
+        """Get precomputed distance between two vertices."""
+        if not self._distances_computed:
+            raise RuntimeError("Distances not available. Call load_or_compute_all_pairs_distances() first.")
+        
+        if source_id not in self._vertex_id_to_index or target_id not in self._vertex_id_to_index:
+            return None
+        
+        source_idx = self._vertex_id_to_index[source_id]
+        target_idx = self._vertex_id_to_index[target_id]
+        
+        distance_cm = self._distance_matrix[source_idx, target_idx]
+        # Check if distance is the "infinity" value (unreachable)
+        if distance_cm == np.iinfo(np.int32).max:
+            return None
+        
+        # Convert back from centimeters to meters
+        return float(distance_cm) / 100.0
+    
+    def get_all_distances_from(self, source_id: int) -> dict[int, float]:
+        """Get all distances from a source vertex."""
+        if not self._distances_computed:
+            raise RuntimeError("Distances not available. Call load_or_compute_all_pairs_distances() first.")
+        
+        if source_id not in self._vertex_id_to_index:
+            return {}
+        
+        source_idx = self._vertex_id_to_index[source_id]
+        distances = {}
+        
+        INF_VALUE = np.iinfo(np.int32).max
+        for target_idx, distance_cm in enumerate(self._distance_matrix[source_idx]):
+            if distance_cm != INF_VALUE:
+                target_id = self._index_to_vertex_id[target_idx]
+                distances[target_id] = float(distance_cm) / 100.0
+        
+        return distances
+
+    def load_or_compute_all_pairs_distances(self, 
+                                            distances_file: str = 'all_pairs_distances.npy', 
+                                            mapping_file: str = 'vertex_id_mapping.json') -> None:
+        """
+        Load all-pairs shortest distances from files if they exist, otherwise compute and save to files.
+        
+        Args:
+            distances_file: Path to the NPY file storing the distance matrix
+            mapping_file: Path to the JSON file storing the vertex ID to index mappings
+        """
+        # Try to load both files
+        distances_exist = os.path.exists(distances_file)
+        mapping_exists = os.path.exists(mapping_file)
+        
+        if distances_exist and mapping_exists:
+            print(f"Loading precomputed distances from {distances_file} and mappings from {mapping_file}...")
+            try:
+                # Load distance matrix
+                self._distance_matrix = np.load(distances_file)
+                
+                # Load vertex ID mappings
+                with open(mapping_file, 'r') as f:
+                    mapping_data = json.load(f)
+                    self._vertex_id_to_index = {int(k): v for k, v in mapping_data['vertex_id_to_index'].items()}
+                    # Reconstruct the reverse mapping from vertex_id_to_index
+                    self._index_to_vertex_id = {v: k for k, v in self._vertex_id_to_index.items()}
+                
+                self._distances_computed = True
+                print(f"Successfully loaded distances for {len(self._vertex_id_to_index)} vertices")
+            except (IOError, KeyError, ValueError, json.JSONDecodeError) as e:
+                print(f"Error loading distance data: {e}")
+                print("Computing distances from scratch...")
+                self._compute_and_save_distances(distances_file, mapping_file)
+        else:
+            missing_files = []
+            if not distances_exist:
+                missing_files.append(distances_file)
+            if not mapping_exists:
+                missing_files.append(mapping_file)
+            
+            print(f"Distance files not found: {', '.join(missing_files)}. Computing distances...")
+            self._compute_and_save_distances(distances_file, mapping_file)
+
+    def _compute_and_save_distances(self, distances_file: str, mapping_file: str) -> None:
+        """
+        Compute all-pairs shortest distances and save to files.
+        
+        Args:
+            distances_file: Path to save the distance matrix
+            mapping_file: Path to save the vertex ID to index mappings
+        """
+        self.compute_all_pairs_shortest_paths()
+        
+        print(f"Saving computed distances to {distances_file} and mappings to {mapping_file}...")
+        try:
+            # Save distance matrix as NPY file
+            np.save(distances_file, self._distance_matrix)
+            
+            # Save vertex ID mappings as JSON file (only vertex_id_to_index, reconstruct the reverse when loading)
+            mapping_data = {
+                'vertex_id_to_index': {str(k): v for k, v in self._vertex_id_to_index.items()}
+            }
+            
+            with open(mapping_file, 'w') as f:
+                json.dump(mapping_data, f, indent=2)
+            
+            # Calculate and display file sizes
+            distances_size = os.path.getsize(distances_file)
+            mapping_size = os.path.getsize(mapping_file)
+            distances_mb = distances_size / (1024 * 1024)
+            mapping_kb = mapping_size / 1024
+            
+            print(f"Successfully saved:")
+            print(f"  - Distances to {distances_file} (Size: {distances_mb:.1f} MB)")
+            print(f"  - Mappings to {mapping_file} (Size: {mapping_kb:.1f} KB)")
+            
+        except IOError as e:
+            print(f"Error saving distance data: {e}")
+
     def add_vertex(self, vertex: 'Vertex') -> None:
         """Add vertex to the network"""
         self._vertices[vertex.id] = vertex
@@ -242,6 +432,18 @@ class Network:
         vertex = self._vertices.get(vertex_id)
         if vertex:
             vertex.delete_vertex()
+
+    def reset_id_counters(self) -> None:
+        """Reset vertex and edge ID counters based on current max IDs"""
+        self._vertex_id_counter = self.get_max_vertex_id() + 1
+        self._edge_id_counter = self.get_max_edge_id() + 1
+
+    def undo_temporary_modifications(self) -> None:
+        """Undo all temporary modifications to the network"""
+        self.delete_all_temporary_edges()
+        self.delete_all_temporary_vertices()
+        self.restore_all_detached_edges()
+        self.reset_id_counters()
 
     def __repr__(self):
         return f"Network(vertices={len(self._vertices)}, edges={len(self._edges)})"

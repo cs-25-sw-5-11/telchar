@@ -29,7 +29,7 @@ def split_edge_at_vertices(edge, vertices_to_split: list['Vertex']) -> None:
 def process_edges_to_split(network: Network, edges_to_process: list['Edge'], should_be_vertices) -> None:
     """Main function to process all edges"""
     for edge in tqdm(edges_to_process, desc="Processing edges"):
-        vertices_to_split = get_vertices_to_split(edge,should_be_vertices)
+        vertices_to_split = get_vertices_to_split(network, edge, should_be_vertices)
         for vertex in vertices_to_split:
             network.split_edge_at_vertex(edge, vertex)
     return 
