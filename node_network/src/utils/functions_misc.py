@@ -1,14 +1,35 @@
 from math import radians, sin, cos, sqrt, atan2
 import logging
 import json
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
 from numba import njit
 
+
+def vector_haversine(lat0, lon0, lat1, lon1) -> float:
+    lat0 = np.radians(lat0)
+    lon0 = np.radians(lon0)
+
+    lat1 = np.radians(lat1)
+    lon1 = np.radians(lon1)
+
+    dlat = lat1-lat0
+    dlon = lon1-lon0
+
+    a = np.sin(dlat/2.0) ** 2 + np.cos(lat0) * np.cos(lat1) * np.sin(dlon/2) ** 2
+    c = 2 * np.arcsin(np.sqrt(a))
+    R = 6371
+
+
+    return R * c
+
+
+
 @njit(fastmath=True, cache=True)
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000.0  # meters
+    R = 6371
     lat1 = radians(lat1)
     lon1 = radians(lon1)
     lat2 = radians(lat2)

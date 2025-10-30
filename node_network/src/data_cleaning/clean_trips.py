@@ -1,37 +1,36 @@
 import os
 from glob import glob
-from utils.functions_misc import haversine
+from utils.functions_misc import vector_haversine
 from utils.csv_io import read_csv_stream
 from configs.config import PRE_TRIP_ID_COLUMN,PRE_LAT_COLUMN, PRE_LON_COLUMN, PRE_TIMESTAMP_COLUMN, SPEED_LIMIT
 from typing import List, TextIO, Iterable
 import csv
+import numpy as np
 def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:
     for i in range(1, len(current_trip_rows)):
         if current_trip_rows[i][timestamp_idx] == current_trip_rows[i-1][timestamp_idx]:
             return True
     return False
 
-def check_has_high_speed(current_trip_rows, timestamp_idx, lat_idx, lon_idx) -> bool:
-    speed_limit = SPEED_LIMIT
-    
-    for i in range(1, len(current_trip_rows)):
-        try:
-            t1 = float(current_trip_rows[i][timestamp_idx])
-            t0 = float(current_trip_rows[i-1][timestamp_idx])
-            diff = t1 - t0
-            if diff <= 0:
-                continue
-            lat1 = float(current_trip_rows[i][lat_idx])
-            lon1 = float(current_trip_rows[i][lon_idx])
-            lat0 = float(current_trip_rows[i-1][lat_idx])
-            lon0 = float(current_trip_rows[i-1][lon_idx])
-            dist = haversine(lat0, lon0, lat1, lon1)
-            speed = dist / (diff / 3.6)
-            if speed > speed_limit:
-                return True
-        except (ValueError,IndexError):
-            continue
-    return False
+def check_has_high_speed(trip_rows, timestamp_idx, lat_idx, lon_idx) -> bool:
+
+    rows = np.array(trip_rows, dtype=float)
+    timestamps = rows[:, timestamp_idx]
+    lats = rows[:, lat_idx]
+    lons = rows[:, lon_idx]
+    rows = np.round(rows,5)
+    dt = np.diff(timestamps)
+
+    valid = dt > 0
+    if not np.any(valid):
+        return False
+
+    dists = vector_haversine(lats[:-1], lons[:-1],lats[:1],lons[:1])
+
+    speeds = dists/ (dt/3600.0)
+
+    has_high_speed = np.any(speeds > SPEED_LIMIT)
+    return has_high_speed
 
 
 def get_csv_files(input_dir: str) -> List[str]:
