@@ -19,9 +19,15 @@ METERS_PER_DEGREE = 92800  # Approximate meters per degree for this region
 
 # column number from data in uncleaned csv files
 PRE_TRIP_ID_COLUMN = 0
-PRE_LAT_ID_COLUMN = 2
-PRE_LON_ID_COLUMN = 3
+PRE_LAT_COLUMN = 2
+PRE_LON_COLUMN = 3
 PRE_TIMESTAMP_COLUMN = 4
+
+TRIP_ID_COLUMN = 0
+LAT_COLUMN = 1
+LON_COLUMN = 2
+TIMESTAMP = 3
+
 
 
 #speed limit for cleaning trips

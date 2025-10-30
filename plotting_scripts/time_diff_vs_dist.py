@@ -1,7 +1,7 @@
 import os
 import matplotlib.pyplot as plt
 from glob import glob
-
+from config import TIMESTAMP_COLUMN, LAT_COLUMN, LON_COLUMN, TRIP_ID_COLUMN
 
 def haversine(lon1, lat1, lon2, lat2):
     # Calculate the great circle distance between two points on the earth (specified in decimal degrees)
@@ -35,10 +35,10 @@ def process_file(file, target_trip_id=None):
     with open(file, 'r', encoding='utf-8') as f:
         header = f.readline()
         columns = [col.strip() for col in header.strip().split(',')]
-        trip_id_idx = 0
-        lat_idx = 2
-        lon_idx = 3
-        timestamp_idx = 4
+        trip_id_idx = TRIP_ID_COLUMN
+        lat_idx = LAT_COLUMN
+        lon_idx = LON_COLUMN
+        timestamp_idx = TIMESTAMP_COLUMN
         prev_trip_id = None
         prev_time = None
         prev_lon = None
