@@ -7,9 +7,9 @@ LAT_BIN_SIZE    =   0.001
 LON_BIN_SIZE    =   0.001
 
 # Distance conversion for coordinate system
-# Calculated for middle latitude of region: (45.6570 + 45.8310) / 2 = 45.744°
-# At this latitude: cos(45.744°) ? 0.6985
-# Geometric mean of lat/lon conversions: sqrt(111000 * 111000 * 0.6985) ? 92,800 m/degree
+# Calculated for middle latitude of region: (45.6570 + 45.8310) / 2 = 45.744 deg
+# At this latitude: cos(45.744 deg) ~= 0.6985
+# Geometric mean of lat/lon conversions: sqrt(111000 * 111000 * 0.6985) ~= 92,800 m/degree
 METERS_PER_DEGREE = 92800  # Approximate meters per degree for this region
 
 # Original coordinate ranges from data:
