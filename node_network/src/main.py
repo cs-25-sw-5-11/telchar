@@ -141,7 +141,7 @@ def main() -> None:
         # Capture original state for later comparison
         original_state = capture_network_state()
 
-    # print(all_pairs_network_distances_between_layers(vertex_layers[0], vertex_layers[1]))    
+    
 
     for trip_file in ['trips_150105.csv']:
         # Load and filter trip data

@@ -1,19 +1,21 @@
 import xml.etree.ElementTree as ET
 import json
-import os 
+import os
 from typing import TypedDict, Optional, List, Dict, Set
+
 
 class RoadInfo(TypedDict):
     oneway: Optional[bool]
     road_type: Optional[str]
     nodes: List[str]
 
+
 class NodeInfo(TypedDict):
     lat: float
     lon: float
 
 
-def extract_roads(root: ET.Element,accepted_values: Set[str]) -> Dict[str, RoadInfo]:
+def extract_roads(root: ET.Element, accepted_values: Set[str]) -> Dict[str, RoadInfo]:
     # Extract roads (ways with highway tag)
     roads: Dict[str, RoadInfo] = {}
 
@@ -31,7 +33,6 @@ def extract_roads(root: ET.Element,accepted_values: Set[str]) -> Dict[str, RoadI
             elif k == "oneway":
                 if v == "yes":
                     oneway = True
-            
 
         if is_road:
             node_refs = []
@@ -44,6 +45,7 @@ def extract_roads(root: ET.Element,accepted_values: Set[str]) -> Dict[str, RoadI
             }
     return roads
 
+
 def extract_nodes(root: ET.Element) -> Dict[str, NodeInfo]:
     nodes: Dict[str, NodeInfo] = {}
     for node in root.findall('node'):
@@ -55,19 +57,19 @@ def extract_nodes(root: ET.Element) -> Dict[str, NodeInfo]:
 
     return nodes
 
+
 def write_to_json(input, output_file) -> None:
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(input, f, ensure_ascii=False, indent=2)
     return None
 
 
-
 def extract_map(input_dir: str, output_dir: str) -> None:
     # Parse OSM XML
     accepted_values = {
-    'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential',
-    'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link',
-    'living_street', 'service', 'road' 
+        'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential',
+        'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link',
+        'living_street', 'service', 'road'
     }
     osm_file = os.path.join(input_dir, "map.osm")
 
@@ -78,12 +80,10 @@ def extract_map(input_dir: str, output_dir: str) -> None:
 
     nodes = extract_nodes(root)
     nodes_file = os.path.join(output_dir, "osm_nodes_output.json")
-    write_to_json(nodes,nodes_file)
+    write_to_json(nodes, nodes_file)
 
-
-    roads = extract_roads(root, accepted_values)   
+    roads = extract_roads(root, accepted_values)
     roads_file = os.path.join(output_dir, "osm_roads_output.json")
     write_to_json(roads, roads_file)
-
 
     return None
