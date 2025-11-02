@@ -297,8 +297,12 @@ class Edge:
             existing_mean, existing_variance, existing_total_length = self.traversals_data[time_index]
 
             # Calculate new weighted mean using incremental form (slightly faster)
+            
             total_weight = existing_total_length + edge_length
+            if total_weight == 0:
+                return None
             new_mean = existing_mean + edge_length * (speed - existing_mean) / total_weight
+
             
             # Calculate new weighted variance using Welford's online algorithm for weighted variance
             # delta1 = x - old_mean, new_mean = old_mean + w2*delta1/(w1+w2)

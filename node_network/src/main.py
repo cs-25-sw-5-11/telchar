@@ -77,10 +77,6 @@ def get_edges_in_path(best_path: list[int], time_interval: int, times: list[floa
         time_diff = times[i+1] - times[i]
         speed = int(dist / time_diff * 100)  # Convert m/s to cm/s
 
-
-        """HERE BUG !!!, path edge length is 0.0?? """
-        print("path_edges ", path_edges)
-        
         for edge in path_edges:
             edge_length = int(edge.length * 100)  # Convert m to cm
             # Converting to cm and using int to save space.
