@@ -1,3 +1,5 @@
+from typing import List, Tuple
+from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
 from math import radians, sin, cos, sqrt, atan2
 import logging
 import json
@@ -65,6 +67,38 @@ def get_bin_indices(lat: float, lon: float):
     lat_idx = int((lat - LAT_MIN) / LAT_BIN_SIZE)
     lon_idx = int((lon - LON_MIN) / LON_BIN_SIZE)
     return (lat_idx, lon_idx)
+
+def get_bins_near_point(lat: float, lon: float, range: int=0) -> List[Tuple[int, int]]:
+    idx = get_bin_indices(lat, lon)
+    if idx is None:
+        raise ValueError(f"Coordinates (lat={lat}, lon={lon}) are out of bounds for the configured bins.")
+    lat_idx, lon_idx = idx
+
+    if range==0:
+        # Check which corner the edge is closest to
+        if lat % LAT_BIN_SIZE < LAT_BIN_SIZE / 2:
+            if lon % LON_BIN_SIZE < LON_BIN_SIZE / 2:
+                # Bottom-left corner
+                offsets = [(0, 0), (-1, 0), (0, -1), (-1, -1)]
+            else:
+                # Bottom-right corner
+                offsets = [(0, 0), (-1, 0), (0, 1), (-1, 1)]
+        else:
+            if lon % LON_BIN_SIZE < LON_BIN_SIZE / 2:
+                # Top-left corner
+                offsets = [(0, 0), (1, 0), (0, -1), (1, -1)]
+            else:
+                # Top-right corner
+                offsets = [(0, 0), (1, 0), (0, 1), (1, 1)]
+    else:
+        # Not currently supported, raise error.
+        raise NotImplementedError("Range > 0 not currently supported in _get_bins_near_point.")
+
+    bins = []
+    for d_lat, d_lon in offsets:
+        bins.append((lat_idx + d_lat, lon_idx + d_lon))
+
+    return bins
 
 def restore_network_to_original_state(debug: bool=False):
     """

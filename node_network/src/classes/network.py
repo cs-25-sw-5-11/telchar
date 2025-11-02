@@ -8,8 +8,7 @@ import numpy as np
 from . import Edge, Vertex
 import heapq
 from tqdm import tqdm
-from utils.functions_misc import get_bin_indices
-from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
+from utils.functions_misc import get_bin_indices, get_bins_near_point
 
 logger = logging.getLogger(__name__)
 
@@ -37,45 +36,13 @@ class Network:
         Includes edges in the bin containing the coordinate and the 3 
         bins sharing the edge the coordinate is closest to."""
         nearby_edges: Set['Edge'] = set()
-        nearby_bins = self._get_bins_near_point(lat, lon)
+        nearby_bins = get_bins_near_point(lat, lon)
         for lat_idx, lon_idx in nearby_bins:
             edges_in_bin = self.get_edges_in_bin(lat_idx, lon_idx)
             nearby_edges.update(edges_in_bin)
 
         return nearby_edges
     
-    def _get_bins_near_point(self, lat: float, lon: float, range: int=0) -> List[Tuple[int, int]]:
-        idx = get_bin_indices(lat, lon)
-        if idx is None:
-            raise ValueError(f"Coordinates (lat={lat}, lon={lon}) are out of bounds for the configured bins.")
-        lat_idx, lon_idx = idx
-
-        if range==0:
-            # Check which corner the edge is closest to
-            if lat % LAT_BIN_SIZE < LAT_BIN_SIZE / 2:
-                if lon % LON_BIN_SIZE < LON_BIN_SIZE / 2:
-                    # Bottom-left corner
-                    offsets = [(0, 0), (-1, 0), (0, -1), (-1, -1)]
-                else:
-                    # Bottom-right corner
-                    offsets = [(0, 0), (-1, 0), (0, 1), (-1, 1)]
-            else:
-                if lon % LON_BIN_SIZE < LON_BIN_SIZE / 2:
-                    # Top-left corner
-                    offsets = [(0, 0), (1, 0), (0, -1), (1, -1)]
-                else:
-                    # Top-right corner
-                    offsets = [(0, 0), (1, 0), (0, 1), (1, 1)]
-        else:
-            # Not currently supported, raise error.
-            raise NotImplementedError("Range > 0 not currently supported in _get_bins_near_point.")
-
-        bins = []
-        for d_lat, d_lon in offsets:
-            bins.append((lat_idx + d_lat, lon_idx + d_lon))
-
-        return bins
-
     def compute_all_pairs_shortest_paths(self):
         """Precompute shortest distances between all vertex pairs using Dijkstra from each vertex."""
         print("Computing all-pairs shortest distances...")

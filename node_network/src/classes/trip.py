@@ -1,5 +1,6 @@
+from typing import Tuple, Set, Optional, Dict, List
 from . import Edge, Vertex, Network, PointProjection
-from utils.functions_misc import haversine
+from utils.functions_misc import haversine, get_bin_indices, get_bins_near_point
 
 class Trip:
     """Represents a trip consisting of a sequence of GPS points,
@@ -14,6 +15,7 @@ class Trip:
         self.times = times
         self.dummy_network = Network()
         self._point_projections: set[PointProjection] = set()
+        self._point_projection_bin_lookup: Dict[Tuple[int, int], List['PointProjection']] = {}
         self._projection_layers: list[list[Vertex | PointProjection]] = []
 
     def _project_trip_point(self, network: Network, 
@@ -48,14 +50,26 @@ class Trip:
 
             # Otherwise, make a point projection.
             point_projection = PointProjection(edge, proj_lat, proj_lon, seg_idx, seg_t)
-            self._point_projections.add(point_projection)
+            # Add it to layer
             projection_layer.add(point_projection)
+            # And to point projection bin lookup
+            idx = get_bin_indices(proj_lat, proj_lon)
+            if idx not in self._point_projection_bin_lookup:
+                self._point_projection_bin_lookup[idx] = []
+            if point_projection not in self._point_projection_bin_lookup[idx]:
+                self._point_projection_bin_lookup[idx].append(point_projection)
+
 
         # Add prior projections if they are within range of the trip point.
-        for prior_projection in self._point_projections:
-            dist_to_prior_projection = haversine(lat, lon, prior_projection.lat, prior_projection.lon)
-            if dist_to_prior_projection <= max_dist:
-                projection_layer.add(prior_projection)
+        # Only examine projections in nearby bins for efficiency.
+        nearby_bins = get_bins_near_point(lat, lon, range=0)
+        for bin in nearby_bins:
+            if bin not in self._point_projection_bin_lookup:
+                continue
+            for prior_projection in self._point_projection_bin_lookup[bin]:
+                dist_to_prior_projection = haversine(lat, lon, prior_projection.lat, prior_projection.lon)
+                if dist_to_prior_projection <= max_dist:
+                    projection_layer.add(prior_projection)
 
         return projection_layer
     
