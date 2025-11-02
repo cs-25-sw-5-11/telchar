@@ -113,6 +113,13 @@ def clean_trips(input_dir: str, output_dir: str) -> None:
     ]
 
     for file_path in get_csv_files(input_dir):
+        file_name = os.path.basename(file_path)
+        cleaned_file_path = os.path.join(output_dir, file_name)
+        cleaned_file_already = os.path.exists(cleaned_file_path)
+        if cleaned_file_already:
+            print(f'skipping cleaning: {file_name}, file already cleaned. ')
+            continue
+
         print(f"cleaning csv {file_path}")
         stream = read_csv_stream(file_path, relevant_cols)
         header = next(stream)
