@@ -143,19 +143,24 @@ def process_trip_by_id(trip_id: int, df: pd.DataFrame) -> tuple[list[Edge], list
 def main() -> None:
     data_input_directory = "data/input_data"
     cleaned_data_directory = "data/cleaned_data"
-    cleaned_nodes_file = os.path.join(cleaned_data_directory,"osm_nodes_output.json") 
-    cleaned_roads_file = os.path.join(cleaned_data_directory,"osm_roads_output.json")
+    cleaned_nodes_file, cleaned_roads_file = extract_map(data_input_directory, cleaned_data_directory)
+       
+       
+   
 
-    map_extracted = os.path.exists(cleaned_nodes_file) and os.path.exists(cleaned_roads_file)  
-    if not map_extracted:
-       extract_map(data_input_directory, cleaned_data_directory)
-    else: 
-        print("skipping extraction of osm map. Map is already extracted")
-    
+    # Relevant columns of the input .csv files
+    pre_clean_trip_id_column = 0
+    pre_clean_lat_column = 2
+    pre_clean_lon_column = 3
+    pre_clean_timestamp_column = 4
 
-    clean_trips(data_input_directory, cleaned_data_directory)
+    clean_trips(data_input_directory,
+                cleaned_data_directory,
+                trip_id_column=pre_clean_timestamp_column,
+                lat_column=pre_clean_lat_column,
+                lon_column=pre_clean_lon_column,
+                timestamp_column=pre_clean_timestamp_column)
 
-    
     build_graph(cleaned_nodes_file, cleaned_roads_file)
 
     network = find_network()

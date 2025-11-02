@@ -64,7 +64,7 @@ def write_to_json(input, output_file) -> None:
     return None
 
 
-def extract_map(input_dir: str, output_dir: str) -> None:
+def extract_map(input_dir: str, output_dir: str) -> List[str]:
     # Parse OSM XML
     accepted_values = {
         'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential',
@@ -78,12 +78,22 @@ def extract_map(input_dir: str, output_dir: str) -> None:
 
     os.makedirs(output_dir, exist_ok=True)
 
-    nodes = extract_nodes(root)
-    nodes_file = os.path.join(output_dir, "osm_nodes_output.json")
-    write_to_json(nodes, nodes_file)
+    nodes_output_name = "osm_nodes_output.json"
+    roads_output_name = "osm_roads_output.json"
+    nodes_file = os.path.join(output_dir, nodes_output_name)
+    roads_file = os.path.join(output_dir, roads_output_name)
 
-    roads = extract_roads(root, accepted_values)
-    roads_file = os.path.join(output_dir, "osm_roads_output.json")
-    write_to_json(roads, roads_file)
+    already_extracted = os.path.exists(
+        nodes_file) and os.path.exists(roads_file)
 
-    return None
+    if not already_extracted:
+        nodes = extract_nodes(root)
+        write_to_json(nodes, nodes_file)
+
+        roads = extract_roads(root, accepted_values)
+        write_to_json(roads, roads_file)
+    else:
+        print("skipping map extraction. Map already extracted.")
+
+
+    return nodes_file, roads_file

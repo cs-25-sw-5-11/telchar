@@ -2,13 +2,6 @@ import os
 from glob import glob
 from utils.functions_misc import vector_haversine
 from utils.csv_io import read_csv_stream
-from configs.config import (
-    PRE_TRIP_ID_COLUMN,
-    PRE_LAT_COLUMN,
-    PRE_LON_COLUMN,
-    PRE_TIMESTAMP_COLUMN,
-    SPEED_LIMIT,
-)
 from typing import List, TextIO, Iterable
 import csv
 import numpy as np
@@ -64,7 +57,7 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
     return selected_rows
 
 
-def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.writer, relevant_cols: List[int]) -> None:
+def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.writer, relevant_trip_columns: List[int]) -> None:
 
     trip_id_idx, lat_idx, lon_idx, timestamp_idx = 0, 1, 2, 3
 
@@ -73,7 +66,7 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
 
     for row in stream:
 
-        if len(row) < max(relevant_cols):
+        if len(row) < max(relevant_trip_columns):
             continue
 
         new_row = row.copy()
@@ -103,25 +96,32 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
     return None
 
 
-def clean_trips(input_dir: str, output_dir: str) -> None:
+def file_already_cleaned(file_path: str, output_dir: str) -> bool:
+    file_name = os.path.basename(file_path)
+    cleaned_file_path = os.path.join(output_dir, file_name)
+    cleaned_file_already = os.path.exists(cleaned_file_path)
+    if cleaned_file_already:
+        print(f'skipping cleaning: {file_name}, file already cleaned. ')
+        return True
+
+    return False
+
+
+def clean_trips(input_dir: str, output_dir: str, trip_id_column: int, lat_column: int, lon_column: int, timestamp_column: int) -> None:
     os.makedirs(output_dir, exist_ok=True)
-    relevant_cols = [
-        PRE_TRIP_ID_COLUMN,
-        PRE_LAT_COLUMN,
-        PRE_LON_COLUMN,
-        PRE_TIMESTAMP_COLUMN,
+    relevant_trip_columns = [
+        trip_id_column,
+        lat_column,
+        lon_column,
+        timestamp_column,
     ]
 
     for file_path in get_csv_files(input_dir):
-        file_name = os.path.basename(file_path)
-        cleaned_file_path = os.path.join(output_dir, file_name)
-        cleaned_file_already = os.path.exists(cleaned_file_path)
-        if cleaned_file_already:
-            print(f'skipping cleaning: {file_name}, file already cleaned. ')
+        if file_already_cleaned(file_path, output_dir):
             continue
 
         print(f"cleaning csv {file_path}")
-        stream = read_csv_stream(file_path, relevant_cols)
+        stream = read_csv_stream(file_path, relevant_trip_columns)
         header = next(stream)
 
         # Write cleaned file
@@ -130,6 +130,7 @@ def clean_trips(input_dir: str, output_dir: str) -> None:
             writer = csv.writer(fout)
             writer.writerow(header)
 
-            process_and_write_trip_stream(stream, writer, relevant_cols)
+            process_and_write_trip_stream(
+                stream, writer, relevant_trip_columns)
 
     return None
