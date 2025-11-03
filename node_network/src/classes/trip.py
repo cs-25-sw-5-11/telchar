@@ -14,9 +14,50 @@ class Trip:
         self.lons = lons
         self.times = times
         self.dummy_network = Network()
+        self._point_projection_id_counter = 1
         self._point_projections: set[PointProjection] = set()
         self._point_projection_bin_lookup: Dict[Tuple[int, int], List['PointProjection']] = {}
         self._projection_layers: list[list[Vertex | PointProjection]] = []
+
+    def get_next_point_projection_id(self) -> int:
+        """Get the next available point projection ID for this trip."""
+        point_projection_id = self._point_projection_id_counter
+        self._point_projection_id_counter += 1
+        return point_projection_id
+
+    def plot_trip(self, network: Network, edge_ids: list[int], vertex_ids: list[int], point_projection_ids: list[int]) -> None:
+        """Plot the trip's GPS points, along with specified edges, vertices, and point projections."""
+        import matplotlib.pyplot as plt
+
+        # Plot GPS points
+        plt.plot(self.lons, self.lats, 'o-', color='blue', label='GPS Points')
+
+        # Plot edges, but each edge in a different color
+        color_map = ['r', 'g', 'm', 'c', 'y', 'k']
+        for i, edge_id in enumerate(edge_ids):
+            edge = network.get_edge_by_id(edge_id)
+            if edge is not None:
+                edge_lats = [node[0] for node in edge.get_all_nodes()]
+                edge_lons = [node[1] for node in edge.get_all_nodes()]
+                plt.plot(edge_lons, edge_lats, '-', color=color_map[i % len(color_map)], label=f'Edge {edge_id}')
+
+        # Plot vertices
+        for vertex_id in vertex_ids:
+            vertex = network.get_vertex_by_id(vertex_id)
+            if vertex is not None:
+                plt.plot(vertex.lon, vertex.lat, 's', color='red', label=f'Vertex {vertex_id}')
+
+        # Plot point projections
+        for pp_id in point_projection_ids:
+            pp = next((pp for pp in self._point_projections if pp.id == pp_id), None)
+            if pp is not None:
+                plt.plot(pp.lon, pp.lat, 'x', color='orange', label=f'PointProjection {pp_id}')
+
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+        plt.title(f'Trip {self.trip_id} Visualization')
+        plt.legend()
+        plt.show()
 
     def _project_trip_point(self, network: Network, 
                             lat: float, lon: float, 
@@ -43,22 +84,39 @@ class Trip:
             # If seg_t is 0 or 1, the projection may be on an existing vertex.
             if seg_t == 0.0 and seg_idx == 0:
                 projection_layer.add(edge.start)
-                continue            
+                continue
             if seg_t == 1.0 and seg_idx == len(edge.non_vertex_nodes):
                 projection_layer.add(edge.end)
                 continue
 
+            # Check if a projection already exists here.
+            idx = get_bin_indices(proj_lat, proj_lon)
+            existing_projections = self._point_projection_bin_lookup[idx] if idx in self._point_projection_bin_lookup else []
+            existing_projection_found=False
+            for existing_projection in existing_projections:
+                if (abs(existing_projection.lat - proj_lat) < 1e-9 and
+                    abs(existing_projection.lon - proj_lon) < 1e-9 and 
+                    existing_projection.parent_edge.id == edge.id):
+                    print("Found existing projection:", existing_projection)
+                    print("Current values: ", proj_lat, proj_lon, edge.id, seg_idx, seg_t)
+                    # Found an existing projection matching this one.
+                    if existing_projection not in projection_layer:
+                        projection_layer.add(existing_projection)
+                    existing_projection_found = True
+                    break
+
+            if existing_projection_found:
+                continue
+
             # Otherwise, make a point projection.
-            point_projection = PointProjection(edge, proj_lat, proj_lon, seg_idx, seg_t)
+            point_projection = PointProjection(self, edge, proj_lat, proj_lon, seg_idx, seg_t)
             # Add it to layer
             projection_layer.add(point_projection)
             # And to point projection bin lookup
-            idx = get_bin_indices(proj_lat, proj_lon)
             if idx not in self._point_projection_bin_lookup:
                 self._point_projection_bin_lookup[idx] = []
             if point_projection not in self._point_projection_bin_lookup[idx]:
                 self._point_projection_bin_lookup[idx].append(point_projection)
-
 
         # Add prior projections if they are within range of the trip point.
         # Only examine projections in nearby bins for efficiency.
@@ -77,7 +135,6 @@ class Trip:
         """Project the trip's GPS points onto the given network,
         storing the resulting vertices."""
         for lat, lon in zip(self.lats, self.lons):
-            print(lat, lon)
             new_projection_layers = self._project_trip_point(network, lat, lon, max_dist)
             self._projection_layers.append(new_projection_layers)
 
