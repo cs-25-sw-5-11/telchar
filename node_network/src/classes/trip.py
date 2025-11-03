@@ -1,6 +1,7 @@
 from typing import Tuple, Set, Optional, Dict, List
 from . import Edge, Vertex, Network, PointProjection
 from utils.functions_misc import haversine, get_bin_indices, get_bins_near_point
+import numpy as np
 
 class Trip:
     """Represents a trip consisting of a sequence of GPS points,
@@ -161,6 +162,9 @@ class Trip:
                         distance = current_projection.get_distance_between_projections(network, next_projection)
                     else:
                         raise ValueError("Unknown projection types.")
+                    
+                    if distance is None:
+                        distance = np.iinfo(np.int32).max # Used to represent unreachable.
                     
                     distances[next_projection.id] = distance
                 layer_distances[current_projection.id] = distances
