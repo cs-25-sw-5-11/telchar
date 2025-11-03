@@ -135,6 +135,8 @@ def main() -> None:
     remove_small_subnetworks(network)
     print(len(network.get_all_vertices()), "vertices after filtering.")
 
+    nodes = set()
+
     network.load_or_compute_all_pairs_distances(distances_file='all_pairs_distances.npy',
                                                 mapping_file='vertex_id_mapping.json')
 
@@ -156,25 +158,11 @@ def main() -> None:
             times = (group['timestamp'] - UNIX_REFERENCE).tolist()
 
             trip = Trip(trip_id, lats, lons, times)
-            result = trip.compute_layer_distances(network, max_dist=MAX_DIST)
-
-            plt.figure(figsize=(12, 10))
-            # Plot each layer in projection_layers in different colors
-            colors = plt.cm.viridis_r(np.linspace(0, 1, len(trip._projection_layers)))
-            for i, layer in enumerate(trip._projection_layers):
-                layer_lats = [item.lat for item in layer]
-                layer_lons = [item.lon for item in layer]
-                plt.scatter(layer_lons, layer_lats, s=10, color=colors[i], alpha=0.6)
-
-            plt.title(f"Trip ID {trip_id} Projections")
-            plt.xlabel("Longitude")
-            plt.ylabel("Latitude")
-            plt.grid(True)
-            plt.show()
-
-            
+            trip_layer_distances = trip.compute_layer_distances(network=network, max_dist=MAX_DIST)
+            # best_path = viterbi_algorithm(trip_layer_distances)
+                        
             with open('temp.json', 'w') as f:
-                f.write(json.dumps(result))
+                f.write(json.dumps(obj=trip_layer_distances, indent=4))
     return
 
     # Reset all vertex and edge IDs to start from 0 and be sequential.
