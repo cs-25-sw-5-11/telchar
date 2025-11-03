@@ -152,14 +152,20 @@ class Trip:
             for current_projection in current_layer:
                 distances = {}
                 for next_projection in next_layer:
-                    if type(current_projection) is Vertex and type(next_projection) is Vertex:
-                        distance = network.get_distance(current_projection, next_projection)
-                    elif type(current_projection) is Vertex and type(next_projection) is PointProjection:
-                        distance = next_projection.get_distance_from_vertex(network, current_projection)
-                    elif type(current_projection) is PointProjection and type(next_projection) is Vertex:
-                        distance = current_projection.get_distance_to_vertex(network, next_projection)
-                    elif type(current_projection) is PointProjection and type(next_projection) is PointProjection:
-                        distance = current_projection.get_distance_between_projections(network, next_projection)
+                    if type(current_projection) is Vertex:
+                        if type(next_projection) is Vertex:
+                            distance = network.get_distance(current_projection, next_projection)
+                        elif type(next_projection) is PointProjection:
+                            distance = next_projection.get_distance_from_vertex(network, current_projection)
+                        else:
+                            raise ValueError("Unknown projection types.")
+                    elif type(current_projection) is PointProjection:
+                        if type(next_projection) is Vertex:
+                            distance = current_projection.get_distance_to_vertex(network, next_projection)
+                        elif type(current_projection) is PointProjection and type(next_projection) is PointProjection:
+                            distance = current_projection.get_distance_between_projections(network, next_projection)
+                        else:
+                            raise ValueError("Unknown projection types.")
                     else:
                         raise ValueError("Unknown projection types.")
                     
