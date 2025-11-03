@@ -29,7 +29,7 @@ def create_edges_and_vertices_from_roads(network: Network, road: dict[str,any], 
     # Get node data from nodes_dict using the node ID
     start_node_data = nodes_dict[start_node_id]
     end_node_data = nodes_dict[end_node_id]
-    
+
     # Get existing vertex or create new one
     start_vertex = network.get_vertex_by_id(int(start_node_id))
     if start_vertex is None:
@@ -67,13 +67,72 @@ def build_graph(nodes_file: str, roads_file: str) -> Network:
         nodes_dict = json.load(f)
     with open(roads_file, 'r', encoding='utf-8') as f:
         roads_dict = json.load(f)
-    
+
+    all_nodes = set()
+    repeated_nodes = set()
+
+    # Determining repeated nodes and turning start and end nodes into vertices.
+    for road in roads_dict.values():
+        if 'nodes' not in road or not road['nodes']:
+            raise ValueError("Road entry missing 'nodes' or has empty 'nodes' list.")
+        for node_id in road['nodes']:
+            node_id = int(node_id)
+            if node_id in all_nodes:
+                repeated_nodes.add(node_id)
+            else:
+                all_nodes.add(node_id)
+
+        Vertex(network=network, 
+               lat=nodes_dict[road['nodes'][0]]['lat'], 
+               lon=nodes_dict[road['nodes'][0]]['lon'], 
+               node_id=int(road['nodes'][0]))
+        Vertex(network=network,
+               lat=nodes_dict[road['nodes'][-1]]['lat'], 
+               lon=nodes_dict[road['nodes'][-1]]['lon'], 
+               node_id=int(road['nodes'][-1]))
+
+    # Create vertices for all repeated nodes
+    for node_id in repeated_nodes:
+        Vertex(network=network,
+               lat=nodes_dict[str(node_id)]['lat'],
+               lon=nodes_dict[str(node_id)]['lon'],
+               node_id=node_id)
+        
+    # Creating edges from roads, but broken up by vertices.
+    for road in roads_dict.values():
+        road_type = road.get('type', 'unknown')
+        oneway = road.get('oneway', True) is True
+        nodes = road['nodes']
+        if len(nodes) < 2: # An edge must span at least two points.
+            continue
+
+        start_vertex = network.get_vertex_by_id(int(nodes[0]))
+        current_edge_nodes = []
+        for node_id in nodes[1:]:
+            node_id_int = int(node_id)
+            if network.check_vertex_exists(node_id_int):
+                # Create edge up to this vertex
+                end_vertex = network.get_vertex_by_id(node_id_int)
+                Edge(network, start_vertex, end_vertex, current_edge_nodes, road_type, oneway)
+                # Reset for next edge segment
+                start_vertex = end_vertex
+                current_edge_nodes = []
+            else:
+                node_data = nodes_dict[str(node_id_int)]
+                current_edge_nodes.append((node_data['lat'], node_data['lon'], node_id_int))
+
+    return network
+
     # Convert dict to list of roads for processing
     roads = convert_json_roads_to_list(roads_dict)
-    
+
     print("Step 1: Creating initial edges and vertices from roads...")
     # Step 1: Create edges and vertices from roads (one edge per road, plus start/end vertices)
     for road in tqdm(roads, desc="Creating initial edges"):
+        road_type = road.get('type', 'unknown')
+        oneway = road.get('oneway', True) is True
+
+
         create_edges_and_vertices_from_roads(network, road, nodes_dict)
     
     print("Step 2: Identifying shared nodes...")

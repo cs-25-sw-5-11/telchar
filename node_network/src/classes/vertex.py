@@ -12,7 +12,14 @@ logger = logging.getLogger(__name__)
 class Vertex:
     """Represents a vertex/node in the graph"""
     
-    def __init__(self, network: Network, lat: float, lon: float, node_id: Optional[int] = None):
+    # Checks whether a vertex with given ID exists in the network
+    def __new__(cls, network: Network, lat: float, lon: float, node_id: int):
+        existing_vertex = network.get_vertex_by_id(node_id)
+        if existing_vertex is not None:
+            return existing_vertex
+        return super(Vertex, cls).__new__(cls)
+
+    def __init__(self, network: Network, lat: float, lon: float, node_id: int):
         self._network = network
         self.lat = lat
         self.lon = lon
@@ -20,24 +27,13 @@ class Vertex:
         self.backward_edges: Dict['Edge', 'Vertex'] = {}
         
         # Set ID
-        if node_id is None:
-            self._id = network.get_next_vertex_id()
-        else:
-            self._id = int(node_id)
-            # Keep counter ahead of manually assigned IDs
-            if self._id >= network._vertex_id_counter:
-                network._vertex_id_counter = self._id + 1
+        self.id = node_id
         
         # Calculate and store bin coordinates
         self.bin_coords = get_bin_indices(self.lat, self.lon)
         
         # Add to network
         network.add_vertex(self)
-    
-    @property
-    def id(self) -> int:
-        """Read-only vertex ID"""
-        return self._id
     
     @property
     def network(self) -> Network:
