@@ -39,6 +39,10 @@ TIME_INTERVAL = 300  # 5 minutes in seconds
 # How often to write edge data to file (in number of trips)
 WRITEOUT_INTERVAL = 1000
 
+# input and clean data directories
+DATA_INPUT_DIRECTORY = "data/input_data"
+CLEANED_DATA_DIRECTORY = "data/cleaned_data"
+
 
 def write_intermediate_edge_data(writeout_timer, trip_id) -> None:
     # Time readout.
@@ -141,25 +145,14 @@ def process_trip_by_id(trip_id: int, df: pd.DataFrame) -> tuple[list[Edge], list
 
 
 def main() -> None:
-    data_input_directory = "data/input_data"
-    cleaned_data_directory = "data/cleaned_data"
-    cleaned_nodes_file, cleaned_roads_file = extract_map(data_input_directory, cleaned_data_directory)
+    cleaned_nodes_file, cleaned_roads_file = extract_map(DATA_INPUT_DIRECTORY, CLEANED_DATA_DIRECTORY)
        
-       
-   
-
-    # Relevant columns of the input .csv files
-    pre_clean_trip_id_column = 0
-    pre_clean_lat_column = 2
-    pre_clean_lon_column = 3
-    pre_clean_timestamp_column = 4
-
-    clean_trips(data_input_directory,
-                cleaned_data_directory,
-                trip_id_column=pre_clean_timestamp_column,
-                lat_column=pre_clean_lat_column,
-                lon_column=pre_clean_lon_column,
-                timestamp_column=pre_clean_timestamp_column)
+    clean_trips(DATA_INPUT_DIRECTORY,
+                CLEANED_DATA_DIRECTORY,
+                trip_id_column=0,
+                lat_column=2,
+                lon_column=3,
+                timestamp_column=4)
 
     build_graph(cleaned_nodes_file, cleaned_roads_file)
 

@@ -9,10 +9,7 @@ import numpy as np
 
 def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:
     for i in range(1, len(current_trip_rows)):
-        if (
-            current_trip_rows[i][timestamp_idx]
-            == current_trip_rows[i - 1][timestamp_idx]
-        ):
+        if (current_trip_rows[i][timestamp_idx] == current_trip_rows[i - 1][timestamp_idx]):
             return True
     return False
 
@@ -81,9 +78,7 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
         is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id
 
         if is_new_trip:
-            if current_trip and is_valid_trip(
-                current_trip, timestamp_idx, lat_idx, lon_idx
-            ):
+            if current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
                 writer.writerows(current_trip)
             current_trip = []
         current_trip.append(new_row)

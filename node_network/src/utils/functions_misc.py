@@ -5,7 +5,6 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-from numba import njit
 
 
 def vector_haversine(lat0, lon0, lat1, lon1) -> float:
@@ -22,12 +21,10 @@ def vector_haversine(lat0, lon0, lat1, lon1) -> float:
     c = 2 * np.arcsin(np.sqrt(a))
     R = 6371
 
-
     return R * c
 
 
 
-@njit(fastmath=True, cache=True)
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371
     lat1 = radians(lat1)
