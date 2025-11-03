@@ -35,7 +35,7 @@ class Edge:
             self.parent_edge = parent_edge
         
         # Get ID from network
-        self._id = network.get_next_edge_id()
+        self.id = network.get_next_edge_id()
         
         # Calculate bins covered
         self.bins_covered = self._calculate_bins_covered()
@@ -51,14 +51,17 @@ class Edge:
         network.add_edge(self)
     
     @property
-    def id(self) -> int:
-        """Read-only edge ID"""
-        return self._id
-    
-    @property
     def network(self) -> Network:
         """The network this edge belongs to"""
         return self._network
+    
+    def get_all_nodes(self) -> List[Tuple[float, float]]:
+        """Get all nodes (vertices and non-vertex nodes) along this edge in order"""
+        nodes = [(self.start.lat, self.start.lon)]
+        for lat, lon, _ in self.non_vertex_nodes:
+            nodes.append((lat, lon))
+        nodes.append((self.end.lat, self.end.lon))
+        return nodes
     
     def calculate_length(self) -> float:
         points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
@@ -200,7 +203,7 @@ class Edge:
         else:
             min_dist_m = None
             
-        return (*proj_point, min_dist_m, seg_idx, seg_t)
+        return (proj_point[0], proj_point[1], min_dist_m, seg_idx, seg_t)
     
     def get_projection_distance_from_start(self, seg_idx: int, seg_t: float) -> float:
         """Get distance along edge from start vertex to projected point"""

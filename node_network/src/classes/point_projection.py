@@ -1,18 +1,20 @@
 from . import Edge, Network, Vertex
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .trip import Trip
 
 class PointProjection:
-    _id_counter = 0
-
     """Represents a projected point on an edge."""
-    def __init__(self, parent_edge: 'Edge', lat: float, lon: float, seg_idx: int, seg_t: float):
+    def __init__(self, trip: 'Trip', parent_edge: 'Edge', lat: float, lon: float, seg_idx: int, seg_t: float):
         self.lat = lat
         self.lon = lon
         self.parent_edge = parent_edge
         self.seg_idx = seg_idx
         self.seg_t = seg_t
 
-        self.id = PointProjection._id_counter
-        PointProjection._id_counter += 1
+        # Get ID from trip
+        self.id = trip.get_next_point_projection_id()
 
         self.onward_vertex = parent_edge.end
         self.backward_vertex = parent_edge.start
@@ -84,7 +86,7 @@ class PointProjection:
             )
 
     def __repr__(self) -> str:
-        return f"PointProjection(lat={self.lat}, lon={self.lon}, edge_id={self.parent_edge.edge_id}, seg_idx={self.seg_idx}, seg_t={self.seg_t})"
+        return f"PointProjection(lat={self.lat}, lon={self.lon}, edge_id={self.parent_edge.id}, seg_idx={self.seg_idx}, seg_t={self.seg_t})"
     
     def __str__(self) -> str:
         return self.__repr__()
