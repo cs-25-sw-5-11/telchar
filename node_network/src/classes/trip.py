@@ -133,14 +133,17 @@ class Trip:
         return projection_layer
     
     def _project_trip_onto_network(self, network: Network, max_dist: float) -> None:
-        """Project the trip's GPS points onto the given network,
-        storing the resulting vertices."""
+        """Project the trip's GPS points onto the given network, storing the resulting projections and vertices
+        (where a vertex is used if one exists where a projection would have been) as layers, with each layer
+        corresponding to projections at one point in the trip."""
         for lat, lon in zip(self.lats, self.lons):
             new_projection_layers = self._project_trip_point(network, lat, lon, max_dist)
             self._projection_layers.append(new_projection_layers)
 
     def compute_layer_distances(self, network: Network, max_dist: float=100) -> None:
-        print("Projecting trip onto network...")
+        """Compute the distance matrix between each layer of projections/vertices
+        for the trip, returning a dictionary where each key is a layer index,
+        and each value is another dictionary mapping projection IDs to their distances."""
         self._project_trip_onto_network(network, max_dist)
 
         result_dict = {}
