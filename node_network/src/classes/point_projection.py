@@ -32,11 +32,21 @@ class PointProjection:
             return self.get_distance_between_projections_sharing_edge(second_projection)
         
         min_dist = float('inf')
-        for first_vertex in [self.onward_vertex, self.backward_vertex]:
+        if self.parent_edge.oneway:
+            first_vertices = [self.onward_vertex]
+        else:
+            first_vertices = [self.onward_vertex, self.backward_vertex]
+
+        if second_projection.parent_edge.oneway:
+            second_vertices = [second_projection.onward_vertex]
+        else:
+            second_vertices = [second_projection.onward_vertex, second_projection.backward_vertex]
+        for first_vertex in first_vertices:
+
             distance_to_first_vertex = (self.onward_vertex_dist 
                                         if first_vertex == self.onward_vertex
                                         else self.backward_vertex_dist)
-            for second_vertex in [second_projection.onward_vertex, second_projection.backward_vertex]:
+            for second_vertex in second_vertices:
                 distance_to_second_vertex = (second_projection.onward_vertex_dist 
                                              if second_vertex == second_projection.onward_vertex
                                              else second_projection.backward_vertex_dist)
