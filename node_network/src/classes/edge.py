@@ -149,21 +149,24 @@ class Edge:
         if self._network:
             self._network._detached_edges.add(self)
     
-    def traversals_data_update(self, time_index: int, speed: int, edge_length: int) -> None:
-        """Update traversal statistics for this edge"""
+    def traversals_data_update(self, time_index: int, speed: float) -> None:
+        """Update traversal statistics for this edge, using cm/s to reduce memory usage."""
+        speed = int(speed * 100)  # Convert m/s to cm/s
+
         if time_index in self.traversals_data:
-            existing_mean, existing_variance, existing_total_length = self.traversals_data[time_index]
-            
-            total_weight = existing_total_length + edge_length
-            new_mean = existing_mean + edge_length * (speed - existing_mean) / total_weight
-            
+            existing_mean, existing_variance, total_traversals = self.traversals_data[time_index]
+
+            total_weight = total_traversals + 1
+            new_mean = existing_mean + 1 * (speed - existing_mean) / total_weight
+
             delta1 = speed - existing_mean
             delta2 = speed - new_mean
-            new_variance = (existing_variance * existing_total_length + edge_length * delta1 * delta2) / total_weight
-            
+            new_variance = (existing_variance * total_traversals + 1 * delta1 * delta2) / total_weight
+            new_variance = int(new_variance)
+
             self.traversals_data[time_index] = (new_mean, new_variance, total_weight)
         else:
-            self.traversals_data[time_index] = (speed, 0.0, edge_length)
+            self.traversals_data[time_index] = (speed, 0.0, 1)
     
     def project_coordinates_onto_edge(self, lat: float, lon: float) -> Tuple[float, float, float, int]:
         """Project coordinates onto this edge and return closest point, distance, and segment index"""
