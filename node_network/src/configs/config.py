@@ -15,3 +15,6 @@ METERS_PER_DEGREE = 92800  # Approximate meters per degree for this region
 # Original coordinate ranges from data:
 # Latitude: min=45.65792, max=45.830902
 # Longitude: min=126.50613, max=126.77186
+
+# Speed limit for cleaning trips
+SPEED_LIMIT = 150

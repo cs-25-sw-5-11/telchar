@@ -3,15 +3,39 @@ from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON
 from math import radians, sin, cos, sqrt, atan2
 import logging
 import json
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
+
+
+def vector_haversine(lat0, lon0, lat1, lon1) -> float:
+    lat0 = np.radians(lat0)
+    lon0 = np.radians(lon0)
+
+    lat1 = np.radians(lat1)
+    lon1 = np.radians(lon1)
+
+    dlat = lat1-lat0
+    dlon = lon1-lon0
+
+    a = np.sin(dlat/2.0) ** 2 + np.cos(lat0) * np.cos(lat1) * np.sin(dlon/2) ** 2
+    c = 2 * np.arcsin(np.sqrt(a))
+    R = 6371
+
+    return R * c
+
+
+
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371000
-    phi1, phi2 = radians(lat1), radians(lat2)
-    dphi = radians(lat2 - lat1)
-    dlambda = radians(lon2 - lon1)
-    a = sin(dphi/2)**2 + cos(phi1)*cos(phi2)*sin(dlambda/2)**2
+    R = 6371
+    lat1 = radians(lat1)
+    lon1 = radians(lon1)
+    lat2 = radians(lat2)
+    lon2 = radians(lon2)
+    dlat = lat2 - lat1
+    dlon = lon2 - lon1
+    a = sin(dlat / 2)**2 + cos(lat1) * cos(lat2) * sin(dlon / 2)**2
     return 2 * R * atan2(sqrt(a), sqrt(1 - a))
 
 def get_time_index(timestamp: int, reference: int, interval: int) -> int:

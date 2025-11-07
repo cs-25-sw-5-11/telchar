@@ -1,5 +1,6 @@
 from classes import Network, Edge, Vertex, Trip
 from graph_building.build_graph import build_graph
+<<<<<<< HEAD
 from graph_building.filter_out_subnetworks import remove_small_subnetworks
 import numpy as np
 
@@ -7,6 +8,17 @@ import numpy as np
 
 from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
 from utils.functions_misc import get_time_index,writeout_traversals_to_json
+=======
+from graph_building.find_network import find_network
+from extract_osm_map.extract_osm_map import extract_map
+from data_cleaning.clean_trips import clean_trips
+from plotting.functions_plotting import plot_networks, plot_directed_graph
+
+from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
+
+from utils.functions_misc import get_time_index, writeout_traversals_to_json, restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states
+
+>>>>>>> main
 from viterbi.viterbi import viterbi_algorithm
 
 import matplotlib.pyplot as plt
@@ -15,6 +27,7 @@ from tqdm import tqdm
 import pandas as pd
 import json
 from datetime import datetime
+import os
 
 logging.basicConfig(
     level=logging.WARNING,  # Set to DEBUG to see debug statements
@@ -33,9 +46,12 @@ PLOT = False
 MAX_DIST = 100
 UNIX_REFERENCE = 1420243200
 TIME_INTERVAL = 300  # 5 minutes in seconds
-WRITEOUT_INTERVAL = 1000 # How often to write edge data to file (in number of trips)
+# How often to write edge data to file (in number of trips)
+WRITEOUT_INTERVAL = 1000
 
-
+# input and clean data directories
+DATA_INPUT_DIRECTORY = "data/input_data"
+CLEANED_DATA_DIRECTORY = "data/cleaned_data"
 
 
 def write_intermediate_edge_data(writeout_timer, trip_id) -> None:
@@ -43,11 +59,12 @@ def write_intermediate_edge_data(writeout_timer, trip_id) -> None:
     start_time = datetime.now()
     # Write edge traversals data to json file.
     print(f"Writing edge traversal data before processing trip_id {trip_id}")
-    writeout_traversals_to_json(file_path='edge_traversals.json', 
+    writeout_traversals_to_json(file_path='edge_traversals.json',
                                 edge_items=Edge.get_all_edges())
     end_time = datetime.now()
     time_diff = (end_time - start_time)
-    print(f"Writeout at {start_time}, took {time_diff.seconds}.{time_diff.microseconds} seconds.")
+    print(
+        f"Writeout at {start_time}, took {time_diff.seconds}.{time_diff.microseconds} seconds.")
     return None
 
 def get_trip_data(df: pd.DataFrame, trip_id: int, time_reference: int) -> tuple[list[float], list[float], list[float]] | None:
@@ -96,7 +113,7 @@ def main() -> None:
 
     for trip_file in ['trips_150103.csv']:
         # Load and filter trip data
-        df = pd.read_csv(f'cleaned_data/{trip_file}')
+        df = pd.read_csv(f'data/cleaned_data/{trip_file}')
         next_writeout = WRITEOUT_INTERVAL
         max_trip = df['trip_id'].max()
 
