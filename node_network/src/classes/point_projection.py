@@ -15,6 +15,7 @@ class PointProjection:
 
         # Get ID from trip
         self.id = trip.get_next_point_projection_id()
+        trip.add_point_projection(self)
 
         self.onward_vertex = parent_edge.end
         self.backward_vertex = parent_edge.start

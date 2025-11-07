@@ -16,9 +16,21 @@ class Trip:
         self.times = times
         self.dummy_network = Network()
         self._point_projection_id_counter = 1
-        self._point_projections: set[PointProjection] = set()
+        self._point_projections: Dict[int, 'PointProjection'] = {}
         self._point_projection_bin_lookup: Dict[Tuple[int, int], List['PointProjection']] = {}
         self._projection_layers: list[list[Vertex | PointProjection]] = []
+
+    def get_id_max(self) -> int:
+        """Get the maximum ID used in this trip (for vertices and point projections)."""
+        return self._point_projection_id_counter - 1
+    
+    def add_point_projection(self, point_projection: PointProjection) -> None:
+        """Add a point projection to this trip's collection."""
+        self._point_projections[point_projection.id] = point_projection
+
+    def get_point_projection_by_id(self, point_projection_id: int) -> Optional[PointProjection]:
+        """Get the point projection with the given ID, if it exists."""
+        return self._point_projections.get(point_projection_id, None)
 
     def get_next_point_projection_id(self) -> int:
         """Get the next available point projection ID for this trip."""
