@@ -2,6 +2,9 @@ from typing import Tuple, Set, Optional, Dict, List
 from . import Edge, Vertex, Network, PointProjection
 from utils.functions_misc import haversine, get_bin_indices, get_bins_near_point
 import numpy as np
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Trip:
     """Represents a trip consisting of a sequence of GPS points,
@@ -110,8 +113,8 @@ class Trip:
                 if (abs(existing_projection.lat - proj_lat) < 1e-9 and
                     abs(existing_projection.lon - proj_lon) < 1e-9 and 
                     existing_projection.parent_edge.id == edge.id):
-                    print("Found existing projection:", existing_projection)
-                    print("Current values: ", proj_lat, proj_lon, edge.id, seg_idx, seg_t)
+                    logger.debug("Found existing projection:", existing_projection)
+                    logger.debug("Current values: ", proj_lat, proj_lon, edge.id, seg_idx, seg_t)
                     # Found an existing projection matching this one.
                     if existing_projection not in projection_layer:
                         projection_layer.add(existing_projection)

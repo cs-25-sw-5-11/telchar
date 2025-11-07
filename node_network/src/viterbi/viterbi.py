@@ -1,5 +1,7 @@
 import json
+import logging
 
+logger = logging.getLogger(__name__)
 
 def load_observations(raw_data):
     total_observations = []
@@ -73,7 +75,7 @@ def run_viterbi(observations, states_per_t):
                 next_path[next_state] = path[best_prev_state] + [next_state]
 
         if not next_path:
-            print("cannot find path")
+            logger.debug("cannot find path")
             return None  
         path = next_path
 
@@ -83,7 +85,7 @@ def run_viterbi(observations, states_per_t):
 
 def backtrace_best_path(V, path):
     if not V[-1]:
-        print("no valid path found")
+        logger.debug("no valid path found")
         return None
 
     final_states = V[-1]
@@ -98,6 +100,8 @@ def viterbi_algorithm(raw_data):
     observations = load_observations(raw_data)
     states_per_t = get_states_per_time(observations)
     result = run_viterbi(observations, states_per_t)
+    # Default to an empty path so callers can safely iterate/measure length
+    best_path = []
 
     if result is not None:
         V, path = result
