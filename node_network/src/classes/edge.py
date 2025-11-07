@@ -151,6 +151,10 @@ class Edge:
     
     def traversals_data_update(self, time_index: int, speed: float) -> None:
         """Update traversal statistics for this edge, using cm/s to reduce memory usage."""
+        # If speed is infinity, ignore. Something went wrong.
+        if speed == float('inf'):
+            return
+
         speed = int(speed * 100)  # Convert m/s to cm/s
 
         if time_index in self.traversals_data:
