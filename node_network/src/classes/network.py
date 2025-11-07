@@ -31,6 +31,39 @@ class Network:
         self._vertex_id_to_index: Dict[int, int] = {}
         self._index_to_vertex_id: Dict[int, int] = {}
 
+    def mark_missing_edge_traversals(self, max_time_index):
+        """Mark edges that were not traversed in for any time index with -1.0 speed."""
+        for edge in tqdm(self._edges.values(), desc="Marking missing edge traversals"):
+            for time_index in range(max_time_index):
+                if time_index not in edge.traversals_data:
+                    edge.traversals_data[time_index] = (-1.0, 0.0, 0)
+
+    def plot_network_within_bins(self, bin_list: List[Tuple[int, int]]) -> None:
+        """Plot all edges and vertices within the specified bins."""
+        import matplotlib.pyplot as plt
+
+        plt.figure(figsize=(10, 10))
+        
+        # Plot edges
+        for lat_idx, lon_idx in bin_list:
+            edges_in_bin = self.get_edges_in_bin(lat_idx, lon_idx)
+            for edge in edges_in_bin:
+                lats = [edge.start.lat] + [node_lat for node_lat, _, _ in edge.non_vertex_nodes] + [edge.end.lat]
+                lons = [edge.start.lon] + [node_lon for _, node_lon, _ in edge.non_vertex_nodes] + [edge.end.lon]
+                plt.plot(lons, lats, '-', color='blue', alpha=0.5)
+
+        # Plot vertices
+        for lat_idx, lon_idx in bin_list:
+            vertices_in_bin = self.get_vertices_in_bin(lat_idx, lon_idx)
+            for vertex in vertices_in_bin:
+                plt.plot(vertex.lon, vertex.lat, 'o', color='red')
+
+        plt.xlabel('Longitude')
+        plt.ylabel('Latitude')
+        plt.title('Network Visualization within Specified Bins')
+        plt.grid(True)
+        plt.show()
+
     def get_edges_near_coordinate(self, lat: float, lon: float) -> Set['Edge']:
         """Return all edges near a given coordinate.
         Includes edges in the bin containing the coordinate and the 3 
