@@ -147,12 +147,13 @@ def process_trip_by_id(trip_id: int, df: pd.DataFrame) -> tuple[list[Edge], list
 def main() -> None:
     cleaned_nodes_file, cleaned_roads_file = extract_map(DATA_INPUT_DIRECTORY, CLEANED_DATA_DIRECTORY)
        
-    clean_trips(DATA_INPUT_DIRECTORY,
+    cleaned_files = clean_trips(DATA_INPUT_DIRECTORY,
                 CLEANED_DATA_DIRECTORY,
                 trip_id_column=0,
                 lat_column=2,
                 lon_column=3,
                 timestamp_column=4)
+   
 
     build_graph(cleaned_nodes_file, cleaned_roads_file)
 
@@ -162,7 +163,8 @@ def main() -> None:
         # Capture original state for later comparison
         original_state = capture_network_state()
 
-    for trip_file in ['trips_150105.csv']:
+    for trip_file in cleaned_files:
+        trip_file = os.path.basename(trip_file)
         # Load and filter trip data
         df = pd.read_csv(f'data/cleaned_data/{trip_file}')
         next_writeout = WRITEOUT_INTERVAL
@@ -172,6 +174,7 @@ def main() -> None:
         lons = None
         best_path_vertex_coords = None
 
+        #TODO change to full length of cleaned file instead of trip 3-8
         for trip_id in tqdm(range(3, 8), desc=f"Processing trips in {trip_file}"):
             # Reset network state before processing each trip.
             # Here instead of at the end due to possible early continues.

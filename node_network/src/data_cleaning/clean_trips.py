@@ -103,7 +103,7 @@ def file_already_cleaned(file_path: str, output_dir: str) -> bool:
     return False
 
 
-def clean_trips(input_dir: str, output_dir: str, trip_id_column: int, lat_column: int, lon_column: int, timestamp_column: int) -> None:
+def clean_trips(input_dir: str, output_dir: str, trip_id_column: int, lat_column: int, lon_column: int, timestamp_column: int) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
     relevant_trip_columns = [
         trip_id_column,
@@ -111,8 +111,9 @@ def clean_trips(input_dir: str, output_dir: str, trip_id_column: int, lat_column
         lon_column,
         timestamp_column,
     ]
-
+    output_files = []
     for file_path in get_csv_files(input_dir):
+        output_files.append(file_path)
         if file_already_cleaned(file_path, output_dir):
             continue
 
@@ -128,5 +129,9 @@ def clean_trips(input_dir: str, output_dir: str, trip_id_column: int, lat_column
 
             process_and_write_trip_stream(
                 stream, writer, relevant_trip_columns)
+        
 
-    return None
+
+    #return cleaned data files
+
+    return output_files
