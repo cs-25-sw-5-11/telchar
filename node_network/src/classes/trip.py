@@ -192,4 +192,142 @@ class Trip:
             result_dict[i] = layer_distances
 
         return result_dict
+    
+    def apply_speed_to_edges(self, edges: list[Edge], time_index: int, speed: float) -> None:
+        """Apply a speed to the given edges, updating their travel time statistics."""
+        for edge in edges:
+            edge.traversals_data_update(time_index, speed)
+    
+    def find_shortest_edge_path(self, start_item_id: int, end_item_id: int) -> Tuple[float, list[Edge]]:
+        """Find the shortest path between a projections/vertices and a specific vertex in the network or a projection,
+        returning the total distance and the list of edges in the path."""
+        # Trivial case: start and end are the same.
+        if start_item_id == end_item_id:
+            return (0.0, [])
+        
+        # Determine if the item is a PointProjection or Vertex.
+        # Vertices will have IDs with 10 or more digits, while PointProjections have smaller IDs.
+        if start_item_id <= self.get_id_max():
+            start = self.get_point_projection_by_id(start_item_id)
+        else:
+            start = self.network.get_vertex_by_id(start_item_id)
 
+        if end_item_id <= self.get_id_max():
+            end = self.get_point_projection_by_id(end_item_id)
+        else:
+            end = self.network.get_vertex_by_id(end_item_id)
+
+
+        # Simple case: end is a vertex, simply run find_shortest_edge_path_to_vertex.
+        if isinstance(end, Vertex):
+            return self._find_shortest_edge_path_to_vertex(start, end)
+        
+        # Otherwise, end is a PointProjection. Start by checking whether the parent edge is oneway.
+        # If it is oneway, we can only reach it from the start vertex.
+        if end.parent_edge.oneway:
+            dist, edges = self._find_shortest_edge_path_to_vertex(start, end.backward_vertex)
+            dist += end.backward_vertex_dist
+            edges.append(end.parent_edge)
+            return (dist, edges)
+
+        # Otherwise, it can be reached from both onward and backward vertices. Compute both paths and take the shorter one.
+        dist_to_backward, edges_to_backward = self._find_shortest_edge_path_to_vertex(start, end.backward_vertex)
+        dist_to_onward, edges_to_onward = self._find_shortest_edge_path_to_vertex(start, end.onward_vertex)
+        if (dist_to_backward + end.backward_vertex_dist) <= (dist_to_onward + end.onward_vertex_dist):
+            edges_to_backward.append(end.parent_edge)
+            return (dist_to_backward, edges_to_backward)
+        else:
+            edges_to_onward.append(end.parent_edge)
+            return (dist_to_onward, edges_to_onward)
+
+    def _find_shortest_edge_path_to_vertex(self, start: Vertex | PointProjection, end: Vertex) -> Tuple[float, list[Edge]]:
+        """Find the shortest path between a projections/vertices and a specific vertex in the network,
+        returning the total distance and the list of edges in the path."""
+        # A* search for shortest path finding, using Haversine distance as heuristic.
+        import heapq
+        
+        # Handle same start and end
+        if start.id == end.id:
+            return (0.0, [])
+        
+        # Priority queue: (f_score, g_score, current_node, path_edges)
+        # f_score = g_score + heuristic
+        open_set = []
+
+        # If start is PointProjection, add the connected vertices as initial nodes
+        if isinstance(start, PointProjection):
+            # Move forward to end vertex
+            neighbor = start.onward_vertex
+            edge_cost = start.onward_vertex_dist
+            heuristic = haversine(neighbor.lat, neighbor.lon, end.lat, end.lon)
+            f_score = edge_cost + heuristic
+            heapq.heappush(open_set, (f_score, edge_cost, neighbor, [start.parent_edge]))
+            
+            # Move backward to start vertex (if edge allows)
+            if not start.parent_edge.oneway:
+                neighbor = start.backward_vertex
+                edge_cost = start.backward_vertex_dist
+                heuristic = haversine(neighbor.lat, neighbor.lon, end.lat, end.lon)
+                f_score = edge_cost + heuristic
+                heapq.heappush(open_set, (f_score, edge_cost, neighbor, [start.parent_edge]))
+        else: 
+            heapq.heappush(open_set, (0.0, 0.0, start, []))
+
+        # Track visited nodes and their best g_scores
+        visited = set()
+        g_scores = {start.id: 0.0}
+        
+        while open_set:
+            f_score, g_score, current, path_edges = heapq.heappop(open_set)
+            
+            # Skip if we've already processed this node with a better score
+            if current.id in visited:
+                continue
+            visited.add(current.id)
+            
+            # Check if we reached the destination
+            if current.id == end.id:
+                return (g_score, path_edges)
+
+            # Explore neighbors
+            neighbors = []
+            
+            if isinstance(current, Vertex):
+                # For vertices, explore all outward edges
+                for edge in current.get_outward_edges():
+                    neighbor = edge.end
+                    edge_cost = edge.length
+                    neighbors.append((neighbor, edge_cost, edge))
+
+                # For bidirectional edges, also explore backward edges
+                for edge in current.get_backward_edges():
+                    if not edge.oneway:
+                        neighbor = edge.start
+                        edge_cost = edge.length
+                        neighbors.append((neighbor, edge_cost, edge))
+            else:
+                raise ValueError("Current node should be a vertex.")
+               
+            # Process each neighbor
+            for neighbor, edge_cost, edge in neighbors:
+                if neighbor.id in visited:
+                    continue
+                    
+                tentative_g_score = g_score + edge_cost
+                
+                # Skip if we've found a better path to this neighbor
+                if neighbor.id in g_scores and tentative_g_score >= g_scores[neighbor.id]:
+                    continue
+                
+                g_scores[neighbor.id] = tentative_g_score
+                
+                # Calculate heuristic (straight-line distance to goal)
+                heuristic = haversine(neighbor.lat, neighbor.lon, end.lat, end.lon)
+                f_score = tentative_g_score + heuristic
+                
+                # Add to open set
+                new_path = path_edges + [edge]
+                heapq.heappush(open_set, (f_score, tentative_g_score, neighbor, new_path))
+        
+        # No path found
+        return (float('inf'), [])
