@@ -1,6 +1,5 @@
 from classes import Network, Edge, Vertex, Trip
 from graph_building.build_graph import build_graph
-<<<<<<< HEAD
 from graph_building.filter_out_subnetworks import remove_small_subnetworks
 import numpy as np
 
@@ -8,8 +7,6 @@ import numpy as np
 
 from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
 from utils.functions_misc import get_time_index,writeout_traversals_to_json
-=======
-from graph_building.find_network import find_network
 from extract_osm_map.extract_osm_map import extract_map
 from data_cleaning.clean_trips import clean_trips
 from plotting.functions_plotting import plot_networks, plot_directed_graph
@@ -17,8 +14,6 @@ from plotting.functions_plotting import plot_networks, plot_directed_graph
 from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
 
 from utils.functions_misc import get_time_index, writeout_traversals_to_json, restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states
-
->>>>>>> main
 from viterbi.viterbi import viterbi_algorithm
 
 import matplotlib.pyplot as plt
