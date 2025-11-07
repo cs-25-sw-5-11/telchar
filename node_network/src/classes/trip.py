@@ -1,6 +1,6 @@
 from typing import Tuple, Set, Optional, Dict, List
 from . import Edge, Vertex, Network, PointProjection
-from utils.functions_misc import haversine, get_bin_indices, get_bins_near_point
+from utils.functions_misc import haversine, get_bin_indices, get_bins_near_point, get_time_index
 import numpy as np
 import logging
 
@@ -23,6 +23,16 @@ class Trip:
         self._point_projections: Dict[int, 'PointProjection'] = {}
         self._point_projection_bin_lookup: Dict[Tuple[int, int], List['PointProjection']] = {}
         self._projection_layers: list[list[Vertex | PointProjection]] = []
+
+    def process_and_apply_best_path(self, best_path: list[int], times: list[float], time_interval: int) -> None:
+        if len(best_path) < 2:
+            return
+
+        for i in range(len(best_path)-1):
+            dist, edges = self.find_shortest_edge_path(start_item_id = best_path[i], end_item_id = best_path[i+1])
+            speed = dist / (times[i+1] - times[i])  # m/s
+            time_index = get_time_index(timestamp=times[i], reference=0, interval=time_interval)
+            self.apply_speed_to_edges(edges, time_index, speed)
 
     def get_id_max(self) -> int:
         """Get the maximum ID used in this trip (for vertices and point projections)."""

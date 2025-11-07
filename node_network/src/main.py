@@ -1,16 +1,12 @@
 from classes import Network, Edge, Vertex, Trip
 from graph_building.build_graph import build_graph
 from graph_building.filter_out_subnetworks import remove_small_subnetworks
-from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
-from utils.functions_misc import get_time_index,writeout_traversals_to_json
 from extract_osm_map.extract_osm_map import extract_map
 from data_cleaning.clean_trips import clean_trips
-from graph_mapping.functions_mapping import process_trip, find_shortest_edge_path
-from utils.functions_misc import get_time_index, writeout_traversals_to_json, restore_network_to_original_state, validate_network_integrity, capture_network_state, compare_network_states
+from utils.functions_misc import writeout_traversals_to_json
 from viterbi.viterbi import viterbi_algorithm
 
 import logging
-import numpy as np
 import pandas as pd
 import json
 import os
@@ -87,15 +83,8 @@ def writeout_final_result() -> None:
     return None
 
 def main() -> None:
-
     network = build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
-    print(network.get_stats())
-
     remove_small_subnetworks(network)
-    print(len(network.get_all_vertices()), "vertices after filtering.")
-
-    nodes = set()
-
     network.load_or_compute_all_pairs_distances(distances_file='all_pairs_distances.npy',
                                                 mapping_file='vertex_id_mapping.json')
 
@@ -110,20 +99,8 @@ def main() -> None:
 
             trip = Trip(network, trip_id, lats, lons, times)
             trip_layer_distances = trip.compute_layer_distances(max_dist=MAX_DIST)
-            if len(trip_layer_distances) < 2:
-                continue
-
             best_path = viterbi_algorithm(trip_layer_distances)
-            
-            if len(best_path) < 2:
-                continue
-
-            for i in range(len(best_path)-1):
-                dist, edges = trip.find_shortest_edge_path(start_item_id = best_path[i], end_item_id = best_path[i+1])
-                speed = dist / (times[i+1] - times[i])  # m/s
-                time_index = get_time_index(timestamp=times[i], reference=0, interval=TIME_INTERVAL)
-                trip.apply_speed_to_edges(edges, time_index, speed)
-
+            trip.process_and_apply_best_path(best_path, times, TIME_INTERVAL)
 
     return
     total_time_intervals = 24 * 60 * 60 / TIME_INTERVAL
