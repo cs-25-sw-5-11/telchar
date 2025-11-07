@@ -1,7 +1,8 @@
+from classes.classes import Vertex
 from tqdm import tqdm
-from classes.classes import Vertex, Edge
 
-def get_vertices_to_split(edge, should_be_vertices)-> list['Vertex']:
+
+def get_vertices_to_split(edge, should_be_vertices) -> list["Vertex"]:
     vertices = []
     for lat, lon, node_id in edge.non_vertex_nodes:
         # Convert to string for consistent lookup (should_be_vertices contains strings)
@@ -13,7 +14,8 @@ def get_vertices_to_split(edge, should_be_vertices)-> list['Vertex']:
                 vertices.append(vertex)
     return vertices
 
-def split_edge_at_vertices(edge, vertices_to_split: list['Vertex']) -> None:
+
+def split_edge_at_vertices(edge, vertices_to_split: list["Vertex"]) -> None:
     current_edge = edge
     for vertex in vertices_to_split:
         if vertex is None:  # Skip None vertices
@@ -29,10 +31,11 @@ def split_edge_at_vertices(edge, vertices_to_split: list['Vertex']) -> None:
 
     return
 
+
 def process_edges_to_split(edges_to_process, should_be_vertices) -> None:
     """Main function to process all edges"""
     for edge in tqdm(edges_to_process, desc="Processing edges"):
-        vertices_to_split = get_vertices_to_split(edge,should_be_vertices)
+        vertices_to_split = get_vertices_to_split(edge, should_be_vertices)
         if vertices_to_split:
-            split_edge_at_vertices(edge,vertices_to_split)
-    return 
+            split_edge_at_vertices(edge, vertices_to_split)
+    return

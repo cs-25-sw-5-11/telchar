@@ -1,15 +1,17 @@
-from typing import Tuple, Set
-from utils.functions_misc import haversine, get_bin_indices
-from configs.config import METERS_PER_DEGREE
-from math import sqrt
 import logging
+from math import sqrt
+from typing import Set, Tuple
+
+from configs.config import METERS_PER_DEGREE
+from utils.functions_misc import get_bin_indices, haversine
 
 logger = logging.getLogger(__name__)
+
 
 class Vertex:
     _vertex_dict = {}  # Class-level dictionary: node_id -> Vertex object
     _temporary_vertices = set()  # Set of temporary vertices
-    _id_counter = 1   # Class-level counter for unique Vertex IDs
+    _id_counter = 1  # Class-level counter for unique Vertex IDs
     _bin_lookup = {}  # Class-level reverse lookup: (lat_idx, lon_idx) -> [vertices]
 
     @classmethod
@@ -24,7 +26,9 @@ class Vertex:
     @classmethod
     def delete_all_temporary_vertices(cls) -> None:
         """Public function to delete all temporary vertices and clear the temporary set"""
-        for vertex in list(cls._temporary_vertices):  # list() snapshot to avoid mutation issues
+        for vertex in list(
+            cls._temporary_vertices
+        ):  # list() snapshot to avoid mutation issues
             vertex.delete_vertex()
         cls._temporary_vertices.clear()
 
@@ -36,27 +40,27 @@ class Vertex:
             vertex.delete_vertex()
 
     @classmethod
-    def get_vertex_by_id(cls, node_id: int) -> 'Vertex | None':
+    def get_vertex_by_id(cls, node_id: int) -> "Vertex | None":
         """Public function to get a Vertex object by its ID."""
         return cls._vertex_dict.get(node_id)
-    
+
     @classmethod
-    def get_all_vertices(cls) -> list['Vertex']:
+    def get_all_vertices(cls) -> list["Vertex"]:
         """Public function to get a list of all Vertex objects."""
         return list(cls._vertex_dict.values())
-    
+
     @classmethod
     def get_max_vertex_id(cls) -> int:
         """Public function to get the maximum vertex ID currently assigned."""
         if cls._vertex_dict:
             return max(cls._vertex_dict.keys())
         return 0
-    
+
     @classmethod
     def get_num_of_vertices(cls) -> int:
         """Public function to get the number of vertices currently stored."""
         return len(cls._vertex_dict)
-    
+
     @classmethod
     def get_num_of_temporary_vertices(cls) -> int:
         """Public function to get the number of temporary vertices currently stored."""
@@ -68,30 +72,40 @@ class Vertex:
         return node_id in cls._vertex_dict
 
     @classmethod
-    def get_vertices_in_bin(cls, lat_idx: int, lon_idx: int) -> list['Vertex']:
+    def get_vertices_in_bin(cls, lat_idx: int, lon_idx: int) -> list["Vertex"]:
         """Public function to get all vertices in a specific bin"""
         return cls._bin_lookup.get((lat_idx, lon_idx), [])
 
-    def __new__(cls, lat: float, lon: float, node_id: int = None, temporary: bool = False):
+    def __new__(
+        cls, lat: float, lon: float, node_id: int = None, temporary: bool = False
+    ):
         # If node_id is provided and already exists, return existing vertex
         if node_id is not None and node_id in cls._vertex_dict:
             existing_vertex = cls._vertex_dict[node_id]
             if temporary:
                 if existing_vertex in cls._temporary_vertices:
-                    logger.debug("Requested temporary creation of existing temporary vertex %s", node_id)
+                    logger.debug(
+                        "Requested temporary creation of existing temporary vertex %s",
+                        node_id,
+                    )
                 else:
-                    logger.warning("Attempt to treat existing non-temporary vertex %s as temporary; ignoring temporary flag", node_id)
+                    logger.warning(
+                        "Attempt to treat existing non-temporary vertex %s as temporary; ignoring temporary flag",
+                        node_id,
+                    )
             return existing_vertex
-        
+
         # Otherwise, create a new instance
         return super().__new__(cls)
 
-    def __init__(self, lat: float, lon: float, node_id: int = None, temporary: bool = False):
+    def __init__(
+        self, lat: float, lon: float, node_id: int = None, temporary: bool = False
+    ):
         # Skip initialization if this is an existing vertex
-        if hasattr(self, 'id'):
+        if hasattr(self, "id"):
             # If this is an existing vertex being requested as temporary, DO NOT add to temporary list
             return
-            
+
         if node_id is None:
             self.id = Vertex._id_counter
             Vertex._id_counter += 1
@@ -109,12 +123,12 @@ class Vertex:
         self.backward_edges = {}
         Vertex._vertex_dict[self.id] = self
         self.parent_edge = None
-        
+
         # Determine & record temporary status
         self.is_temporary = bool(temporary)
         if self.is_temporary:
             Vertex._temporary_vertices.add(self)
-        
+
         # Calculate and store bin coordinates
         self.bin_coords = get_bin_indices(self.lat, self.lon)
         self._update_bin_lookup()
@@ -128,10 +142,10 @@ class Vertex:
 
     def get_outward_edges(self):
         return list(self.onward_edges.keys())
-    
+
     def get_backward_edges(self):
         return list(self.backward_edges.keys())
-    
+
     def get_outward_vertices(self):
         return list(self.onward_edges.values())
 
@@ -143,18 +157,20 @@ class Vertex:
         # Remove from vertex_dict
         if self.id in Vertex._vertex_dict:
             del Vertex._vertex_dict[self.id]
-        
+
         # Remove from bin lookup
         self._delete_from_bin_lookup()
-        
+
         # Remove from temporary list
         if self in Vertex._temporary_vertices:
             Vertex._temporary_vertices.remove(self)
 
-        connected_edges = list(self.onward_edges.keys()) + list(self.backward_edges.keys())
+        connected_edges = list(self.onward_edges.keys()) + list(
+            self.backward_edges.keys()
+        )
         for edge in connected_edges:
             edge.delete_edge()
-    
+
     def _update_bin_lookup(self):
         """Private function to update the reverse bin lookup dictionary"""
         if self.bin_coords:
@@ -173,17 +189,13 @@ class Vertex:
                     del Vertex._bin_lookup[self.bin_coords]
 
     @classmethod
-    def get_vertices_in_bin(cls, lat_idx: int, lon_idx: int) -> list:
-        """Get all vertices in a specific bin"""
-        return cls._bin_lookup.get((lat_idx, lon_idx), [])
-    
-    @classmethod
     def clear_bin_lookup(cls):
         """Clear the bin lookup dictionary"""
         cls._bin_lookup.clear()
-    
+
     def __repr__(self):
         return f"Vertex(id={self.id}, lat={self.lat}, lon={self.lon}, bin={self.bin_coords})"
+
 
 class Edge:
     _edge_dict = {}  # Class-level dictionary: edge_id -> Edge object
@@ -222,7 +234,7 @@ class Edge:
         if cls._edge_dict:
             return max(cls._edge_dict.keys())
         return 0
-    
+
     @classmethod
     def get_num_of_edges(cls) -> int:
         """Public function to get the number of edges currently stored."""
@@ -242,28 +254,38 @@ class Edge:
     def check_edge_exists(cls, edge_id: int) -> bool:
         """Public function to check if an edge with the given edge_id exists."""
         return edge_id in Edge._edge_dict
-    
+
     @classmethod
-    def get_all_edges(cls) -> list['Edge']:
+    def get_all_edges(cls) -> list["Edge"]:
         """Public function to get a list of all Edge objects."""
         return list(cls._edge_dict.values())
-    
+
     @classmethod
-    def _remove_from_temporary_edges(cls, edge: 'Edge') -> None:
+    def _remove_from_temporary_edges(cls, edge: "Edge") -> None:
         """Private function to remove an edge from the temporary edges set."""
         if edge in cls._temporary_edges:
             cls._temporary_edges.remove(edge)
 
     @classmethod
-    def _remove_from_detached_edges(cls, edge: 'Edge') -> None:
+    def _remove_from_detached_edges(cls, edge: "Edge") -> None:
         """Private function to remove an edge from the detached edges set."""
         if edge in cls._detached_edges:
             cls._detached_edges.remove(edge)
 
-    def __init__(self, start_vertex: Vertex, end_vertex: Vertex, non_vertex_nodes: list[Tuple[float, float, int]], type: str, oneway: bool, parent_edge=None):
+    def __init__(
+        self,
+        start_vertex: Vertex,
+        end_vertex: Vertex,
+        non_vertex_nodes: list[Tuple[float, float, int]],
+        type: str,
+        oneway: bool,
+        parent_edge=None,
+    ):
         self.start = start_vertex  # Vertex object
-        self.end = end_vertex      # Vertex object
-        self.non_vertex_nodes = non_vertex_nodes  # List of (lat, lon, id) tuples for non-vertex nodes
+        self.end = end_vertex  # Vertex object
+        self.non_vertex_nodes = (
+            non_vertex_nodes  # List of (lat, lon, id) tuples for non-vertex nodes
+        )
         self.type = type
         self.oneway = oneway
         self.length = self.calculate_length()
@@ -294,22 +316,28 @@ class Edge:
     def traversals_data_update(self, time_index: int, speed: int, edge_length: int):
         # Existing entry: update weighted statistics
         if time_index in self.traversals_data:
-            existing_mean, existing_variance, existing_total_length = self.traversals_data[time_index]
+            existing_mean, existing_variance, existing_total_length = (
+                self.traversals_data[time_index]
+            )
 
             # Calculate new weighted mean using incremental form (slightly faster)
-            
+
             total_weight = existing_total_length + edge_length
             if total_weight == 0:
                 return None
-            new_mean = existing_mean + edge_length * (speed - existing_mean) / total_weight
+            new_mean = (
+                existing_mean + edge_length * (speed - existing_mean) / total_weight
+            )
 
-            
             # Calculate new weighted variance using Welford's online algorithm for weighted variance
             # delta1 = x - old_mean, new_mean = old_mean + w2*delta1/(w1+w2)
             # delta2 = x - new_mean, new_variance = (w1*old_var + w2*delta1*delta2) / (w1+w2)
             delta1 = speed - existing_mean
             delta2 = speed - new_mean
-            new_variance = (existing_variance * existing_total_length + edge_length * delta1 * delta2) / total_weight
+            new_variance = (
+                existing_variance * existing_total_length
+                + edge_length * delta1 * delta2
+            ) / total_weight
 
             self.traversals_data[time_index] = (new_mean, new_variance, total_weight)
         # New entry: initialize with single data point (variance = 0)
@@ -317,16 +345,22 @@ class Edge:
             self.traversals_data[time_index] = (speed, 0.0, edge_length)
 
     def calculate_length(self):
-        points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
+        points = (
+            [(self.start.lat, self.start.lon)]
+            + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes]
+            + [(self.end.lat, self.end.lon)]
+        )
         total = 0.0
         for i in range(len(points) - 1):
-            total += haversine(points[i][0], points[i][1], points[i+1][0], points[i+1][1])
+            total += haversine(
+                points[i][0], points[i][1], points[i + 1][0], points[i + 1][1]
+            )
         return total
-    
+
     def split_edge_along_vertex(self, vertex: Vertex, temporary: bool = False):
         if vertex in (self.start, self.end):
             return None  # No split needed
-        
+
         found_idx = None
         for idx, (lat, lon, node_id) in enumerate(self.non_vertex_nodes):
             # Ensure consistent type comparison - convert both to int
@@ -339,8 +373,20 @@ class Edge:
         if found_idx is None:
             raise ValueError("Vertex not found on edge")
 
-        edge1 = Edge(self.start, vertex, self.non_vertex_nodes[:found_idx], self.type, self.oneway)
-        edge2 = Edge(vertex, self.end, self.non_vertex_nodes[found_idx+1:], self.type, self.oneway)
+        edge1 = Edge(
+            self.start,
+            vertex,
+            self.non_vertex_nodes[:found_idx],
+            self.type,
+            self.oneway,
+        )
+        edge2 = Edge(
+            vertex,
+            self.end,
+            self.non_vertex_nodes[found_idx + 1 :],
+            self.type,
+            self.oneway,
+        )
 
         if temporary:
             edge1.parent_edge = self.parent_edge
@@ -358,7 +404,6 @@ class Edge:
             self.delete_edge()
 
         return edge1, edge2
-
 
     def _remove_references_to_edge(self):
         if self in self.start.onward_edges:
@@ -381,7 +426,7 @@ class Edge:
         self.detached = False
         # Re-add this edge to the spatial bin lookup now that it is active again
         self._update_bin_lookup()
-        
+
         Edge._remove_from_detached_edges(self)
 
     def delete_edge(self):
@@ -396,7 +441,7 @@ class Edge:
                 # Clean up empty bin lists
                 if not Edge._bin_lookup[bin_coord]:
                     del Edge._bin_lookup[bin_coord]
-        
+
         # Remove from temporary and detached edges list if present
         Edge._remove_from_temporary_edges(self)
         Edge._remove_from_detached_edges(self)
@@ -412,17 +457,21 @@ class Edge:
             Edge._detached_edges.add(self)
 
     def project_coordinates_onto_edge(self, lat: float, lon: float):
-        points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
-        min_dist_sq = float('inf')  # Use squared distance to avoid sqrt in the loop
+        points = (
+            [(self.start.lat, self.start.lon)]
+            + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes]
+            + [(self.end.lat, self.end.lon)]
+        )
+        min_dist_sq = float("inf")  # Use squared distance to avoid sqrt in the loop
         proj_point = None
         seg_idx = -1
-        
+
         for i in range(len(points) - 1):
             x0, y0 = points[i]
-            x1, y1 = points[i+1]
+            x1, y1 = points[i + 1]
             px, py = lat, lon
             dx, dy = x1 - x0, y1 - y0
-            
+
             if dx == 0 and dy == 0:
                 # Degenerate segment (zero length)
                 proj = (x0, y0)
@@ -431,56 +480,60 @@ class Edge:
                 t = ((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy)
                 t = max(0, min(1, t))  # Clamp to segment
                 proj = (x0 + t * dx, y0 + t * dy)
-            
+
             # Calculate squared distance (avoid sqrt for comparison)
             dist_sq = (proj[0] - px) ** 2 + (proj[1] - py) ** 2
             if dist_sq < min_dist_sq:
                 min_dist_sq = dist_sq
                 proj_point = proj
                 seg_idx = i
-        
+
         if proj_point is not None:
             # Convert distance from degrees to meters using region-specific constant
             min_dist_degrees = sqrt(min_dist_sq)
             min_dist_m = min_dist_degrees * METERS_PER_DEGREE
         else:
             min_dist_m = None
-            
+
         return (*proj_point, min_dist_m, seg_idx)
-    
+
     def _calculate_bins_covered(self) -> Set[Tuple[int, int]]:
-        """Calculate which bins this edge covers"""        
+        """Calculate which bins this edge covers"""
         bins_covered = set()
-        
+
         # Get all points along the edge
-        points = [(self.start.lat, self.start.lon)] + \
-                [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + \
-                [(self.end.lat, self.end.lon)]
-        
+        points = (
+            [(self.start.lat, self.start.lon)]
+            + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes]
+            + [(self.end.lat, self.end.lon)]
+        )
+
         # Add bins for each point
         for lat, lon in points:
             bin_coords = get_bin_indices(lat, lon)
             if bin_coords is not None:
                 bins_covered.add(bin_coords)
-        
+
         # Also interpolate between points to catch bins the edge passes through
         for i in range(len(points) - 1):
             lat1, lon1 = points[i]
             lat2, lon2 = points[i + 1]
-            
+
             # Sample points along the segment
-            num_samples = max(10, int(haversine(lat1, lon1, lat2, lon2) / 50))  # Sample every ~50m
+            num_samples = max(
+                10, int(haversine(lat1, lon1, lat2, lon2) / 50)
+            )  # Sample every ~50m
             for j in range(num_samples + 1):
                 t = j / num_samples if num_samples > 0 else 0
                 sample_lat = lat1 + t * (lat2 - lat1)
                 sample_lon = lon1 + t * (lon2 - lon1)
-                
+
                 bin_coords = get_bin_indices(sample_lat, sample_lon)
                 if bin_coords is not None:
                     bins_covered.add(bin_coords)
-        
+
         return bins_covered
-    
+
     def _update_bin_lookup(self):
         """Update the reverse bin lookup dictionary"""
         for bin_coord in self.bins_covered:
@@ -488,7 +541,7 @@ class Edge:
                 Edge._bin_lookup[bin_coord] = []
             if self not in Edge._bin_lookup[bin_coord]:
                 Edge._bin_lookup[bin_coord].append(self)
-    
+
     def _remove_from_bin_lookup(self):
         """Remove this edge from all bins it was registered in (used for detach/delete)."""
         for bin_coord in list(self.bins_covered):
@@ -496,22 +549,24 @@ class Edge:
                 Edge._bin_lookup[bin_coord].remove(self)
                 if not Edge._bin_lookup[bin_coord]:
                     del Edge._bin_lookup[bin_coord]
-    
 
     @classmethod
     def get_edges_in_bin(cls, lat_idx: int, lon_idx: int) -> list:
         """Get all active (non-detached) edges in a specific bin"""
         all_edges = cls._bin_lookup.get((lat_idx, lon_idx), [])
         return [edge for edge in all_edges if not edge.detached]
-    
+
     @classmethod
     def clear_bin_lookup(cls):
         """Clear the bin lookup dictionary"""
         cls._bin_lookup.clear()
-    
+
     def __repr__(self):
         return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m, type={self.type}, oneway={self.oneway}, parent_edge={self.parent_edge.id}, bins_covered={len(self.bins_covered)})"
+
     def __hash__(self):
         return self.id
+
     def __eq__(self, other):
         return isinstance(other, Edge) and self.id == other.id
+

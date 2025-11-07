@@ -1,13 +1,17 @@
 import heapq
-import os
-import json
-from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
-from classes.classes import Vertex, Edge
-from utils.functions_misc import get_bin_indices, restore_network_to_original_state
-import pandas as pd
 import logging
 
+from classes.classes import Edge, Vertex
+from configs.config import (
+    LAT_BIN_SIZE,
+    LAT_MIN,
+    LON_BIN_SIZE,
+    LON_MIN,
+)
+from utils.functions_misc import get_bin_indices
+
 logger = logging.getLogger(__name__)
+
 
 def get_edges_near_coordinates(lat, lon, cell_range=0):
     """
@@ -15,39 +19,47 @@ def get_edges_near_coordinates(lat, lon, cell_range=0):
     """
     idx = get_bin_indices(lat, lon)
     if idx is None:
-        raise ValueError(f"Coordinates (lat={lat}, lon={lon}) are out of bounds for the configured bins.")
+        raise ValueError(
+            f"Coordinates (lat={lat}, lon={lon}) are out of bounds for the configured bins."
+        )
     lat_idx, lon_idx = idx
     edges = set()
-    
+
     if cell_range == 0:
         # Use the corner-based logic for cell_range=0
         lat_bin_start = LAT_MIN + lat_idx * LAT_BIN_SIZE
         lon_bin_start = LON_MIN + lon_idx * LON_BIN_SIZE
         corners = [
-            (lat_bin_start, lon_bin_start),                    # bottom-left (0,0)
-            (lat_bin_start + LAT_BIN_SIZE, lon_bin_start),     # top-left (1,0)  
-            (lat_bin_start, lon_bin_start + LON_BIN_SIZE),     # bottom-right (0,1)
-            (lat_bin_start + LAT_BIN_SIZE, lon_bin_start + LON_BIN_SIZE)  # top-right (1,1)
+            (lat_bin_start, lon_bin_start),  # bottom-left (0,0)
+            (lat_bin_start + LAT_BIN_SIZE, lon_bin_start),  # top-left (1,0)
+            (lat_bin_start, lon_bin_start + LON_BIN_SIZE),  # bottom-right (0,1)
+            (
+                lat_bin_start + LAT_BIN_SIZE,
+                lon_bin_start + LON_BIN_SIZE,
+            ),  # top-right (1,1)
         ]
-        dists = [((lat - clat)**2 + (lon - clon)**2, idx) for idx, (clat, clon) in enumerate(corners)]
+        dists = [
+            ((lat - clat) ** 2 + (lon - clon) ** 2, idx)
+            for idx, (clat, clon) in enumerate(corners)
+        ]
         _, closest_corner_idx = min(dists)
-        
+
         # Define the 4 bins that share each corner
         # Each corner is shared by 4 bins, we want the current bin plus the 3 adjacent ones
         corner_to_offsets = {
-            0: [(0, 0), (-1, 0), (0, -1), (-1, -1)],    # bottom-left corner
-            1: [(0, 0), (1, 0), (0, -1), (1, -1)],      # top-left corner
-            2: [(0, 0), (-1, 0), (0, 1), (-1, 1)],      # bottom-right corner  
-            3: [(0, 0), (1, 0), (0, 1), (1, 1)]         # top-right corner
+            0: [(0, 0), (-1, 0), (0, -1), (-1, -1)],  # bottom-left corner
+            1: [(0, 0), (1, 0), (0, -1), (1, -1)],  # top-left corner
+            2: [(0, 0), (-1, 0), (0, 1), (-1, 1)],  # bottom-right corner
+            3: [(0, 0), (1, 0), (0, 1), (1, 1)],  # top-right corner
         }
-        
+
         offsets = corner_to_offsets[closest_corner_idx]
         bins = []
         for di, dj in offsets:
             i = lat_idx + di
             j = lon_idx + dj
             bins.append((i, j))
-        
+
         # Query the class-based system for each bin
         for i, j in bins:
             if (i, j) in Edge._bin_lookup:
@@ -62,55 +74,66 @@ def get_edges_near_coordinates(lat, lon, cell_range=0):
                     edges.update(Edge._bin_lookup[(i, j)])
     return list(edges)
 
+
 def find_existing_vertex_at_projection(proj_lat, proj_lon, proj_edge, tolerance=1e-7):
     """
     Check if projection coordinates match an existing vertex.
-    
+
     Args:
         proj_lat, proj_lon: Projection coordinates
         proj_edge: Edge being projected onto
         tolerance: Coordinate matching tolerance
-    
+
     Returns:
         Vertex object if match found, None otherwise
     """
     # Check if it's close to the start vertex
-    if abs(proj_lat - proj_edge.start.lat) < tolerance and abs(proj_lon - proj_edge.start.lon) < tolerance:
+    if (
+        abs(proj_lat - proj_edge.start.lat) < tolerance
+        and abs(proj_lon - proj_edge.start.lon) < tolerance
+    ):
         return proj_edge.start
-    
+
     # Check if it's close to the end vertex
-    if abs(proj_lat - proj_edge.end.lat) < tolerance and abs(proj_lon - proj_edge.end.lon) < tolerance:
+    if (
+        abs(proj_lat - proj_edge.end.lat) < tolerance
+        and abs(proj_lon - proj_edge.end.lon) < tolerance
+    ):
         return proj_edge.end
-    
+
     # Check if it's close to any existing vertex in the same bin
     idx = get_bin_indices(proj_lat, proj_lon)
     if idx:
         for vertex in Vertex.get_vertices_in_bin(idx[0], idx[1]):
-            if abs(vertex.lat - proj_lat) < tolerance and abs(vertex.lon - proj_lon) < tolerance:
+            if (
+                abs(vertex.lat - proj_lat) < tolerance
+                and abs(vertex.lon - proj_lon) < tolerance
+            ):
                 return vertex
-    
+
     return None
+
 
 def create_temporary_vertex_and_split_edge(proj_lat, proj_lon, proj_edge, seg_idx):
     """
     Create a temporary vertex at projection point and split the edge.
-    
+
     Args:
         proj_lat, proj_lon: Projection coordinates
         proj_edge: Edge to split
         seg_idx: Segment index for insertion
-    
+
     Returns:
         Vertex object if successful, None if failed
     """
     # Create a temporary vertex at the projection point
     temp_vertex = Vertex(proj_lat, proj_lon, temporary=True)
-    
+
     # Insert the new vertex data into the edge's non_vertex_nodes at the correct position
     new_node = (proj_lat, proj_lon, temp_vertex.id)
     insert_pos = seg_idx
     proj_edge.non_vertex_nodes.insert(insert_pos, new_node)
-    
+
     # Now split the edge along this temporary vertex
     try:
         edge1, edge2 = proj_edge.split_edge_along_vertex(temp_vertex, temporary=True)
@@ -124,102 +147,118 @@ def create_temporary_vertex_and_split_edge(proj_lat, proj_lon, proj_edge, seg_id
             Vertex.delete_vertex_by_id(temp_vertex.id)
         return None
 
+
 def process_single_projection(proj_edge, proj_lat, proj_lon, proj_dist, seg_idx):
     """
     Process a single projection to find or create a vertex.
-    
+
     Args:
         proj_edge: Edge being projected onto
         proj_lat, proj_lon: Projection coordinates
         proj_dist: Distance to projection point
         seg_idx: Segment index
-    
+
     Returns:
         Vertex object if successful, None if failed
     """
-    
+
     # First, check if projection matches an existing vertex
     projected_vertex = find_existing_vertex_at_projection(proj_lat, proj_lon, proj_edge)
-    
+
     if projected_vertex:
         return projected_vertex
-    
+
     # If no existing vertex found, create temporary vertex and split edge
-    return create_temporary_vertex_and_split_edge(proj_lat, proj_lon, proj_edge, seg_idx)
+    return create_temporary_vertex_and_split_edge(
+        proj_lat, proj_lon, proj_edge, seg_idx
+    )
+
 
 def project_single_trip_point(lat, lon, cell_range, max_dist):
     """
     Project a single trip point onto the network.
-    
+
     Args:
         lat, lon: Trip point coordinates
         cell_range: Search radius in bins
         max_dist: Maximum projection distance
-    
+
     Returns:
         List of vertices where the point was projected
     """
     # Get all edges in nearby bins
     nearby_edges = get_edges_near_coordinates(lat, lon, cell_range)
-    
+
     if not nearby_edges:
         logger.debug(f"No edges found near point ({lat}, {lon})")
         return None
-    
+
     # Find all valid projections within max_dist
     valid_projections = []
-    
+
     for edge in nearby_edges:
         # Skip detached edges
         if edge.detached:
             continue
-            
-        proj_lat, proj_lon, dist_m, seg_idx = edge.project_coordinates_onto_edge(lat, lon)
-        
+
+        proj_lat, proj_lon, dist_m, seg_idx = edge.project_coordinates_onto_edge(
+            lat, lon
+        )
+
         if dist_m is not None and dist_m <= max_dist:
             valid_projections.append((edge, proj_lat, proj_lon, dist_m, seg_idx))
-    
+
     if not valid_projections:
         logger.debug("No suitable projections found within max distance")
         return None
-    
+
     # Sort projections by distance (closest first)
     valid_projections.sort(key=lambda x: x[3])
-    
+
     # Process each valid projection to create/find vertices
     projected_vertices = []
-    
+
     for proj_edge, proj_lat, proj_lon, proj_dist, seg_idx in valid_projections:
-        projected_vertex = process_single_projection(proj_edge, proj_lat, proj_lon, proj_dist, seg_idx)
-        
+        projected_vertex = process_single_projection(
+            proj_edge, proj_lat, proj_lon, proj_dist, seg_idx
+        )
+
         # Add the projected vertex to the list if not already present
         if projected_vertex and projected_vertex not in projected_vertices:
             projected_vertices.append(projected_vertex)
-    
+
     return projected_vertices
 
-def project_trip_coordinates_onto_edges(lats, lons, cell_range=0, max_dist=float('inf'), debug: bool=False):
+
+def project_trip_coordinates_onto_edges(
+    lats, lons, cell_range=0, max_dist=float("inf"), debug: bool = False
+):
     # Process each trip point sequentially
     results = []  # List of lists of vertices
-    
+
     for i, (lat, lon) in enumerate(zip(lats, lons)):
         if debug:
-            print(f"Processing trip point {i+1}/{len(lats)}: ({lat:.6f}, {lon:.6f})")
-        
+            print(f"Processing trip point {i + 1}/{len(lats)}: ({lat:.6f}, {lon:.6f})")
+
         # Project this single point onto the current network state
         projected_vertices = project_single_trip_point(lat, lon, cell_range, max_dist)
 
         if projected_vertices is None:
             return None
-        
+
         # Add results and log progress
         results.append(projected_vertices)
         if debug:
-            print(f"  Created/found {len(projected_vertices)} vertices for this trip point")
+            print(
+                f"  Created/found {len(projected_vertices)} vertices for this trip point"
+            )
 
     if debug:
-        print(f"Trip projection complete. Created {Vertex.get_num_of_temporary_vertices()} temporary vertices")
+        print(
+            f"Trip projection complete. Created {Vertex.get_num_of_temporary_vertices()} temporary vertices"
+        )
     return results
+
 
 def find_or_create_vertex_at_projection(proj_lat, proj_lon, tolerance=1e-9):
     """
@@ -228,16 +267,20 @@ def find_or_create_vertex_at_projection(proj_lat, proj_lon, tolerance=1e-9):
     idx = get_bin_indices(proj_lat, proj_lon)
     if idx is None:
         return None, False
-    
+
     lat_idx, lon_idx = idx
     # Check if there are vertices in this bin
     for vertex in Vertex.get_vertices_in_bin(lat_idx, lon_idx):
-        if abs(vertex.lat - proj_lat) <= tolerance and abs(vertex.lon - proj_lon) <= tolerance:
+        if (
+            abs(vertex.lat - proj_lat) <= tolerance
+            and abs(vertex.lon - proj_lon) <= tolerance
+        ):
             return vertex, False
-    
+
     # No existing vertex found, create new one
     vertex = Vertex(proj_lat, proj_lon, temporary=True)
     return vertex, True
+
 
 def all_pairs_network_distances_between_layers(layer1, layer2):
     """
@@ -245,7 +288,7 @@ def all_pairs_network_distances_between_layers(layer1, layer2):
     Only traverses onward edges (respects directed graph structure).
     Returns a dict: {v1: {v2: dist, ...}, ...} where dist is the sum of edge.length along the shortest path.
     """
-    import heapq
+
     results = {}
     layer2_ids = set(v.id for v in layer2)
     for v1 in layer1:
@@ -253,9 +296,10 @@ def all_pairs_network_distances_between_layers(layer1, layer2):
         # Collect distances to all layer2 vertices
         result_row = {}
         for v2 in layer2:
-            result_row[v2] = dists.get(v2.id, float('inf'))
+            result_row[v2] = dists.get(v2.id, float("inf"))
         results[v1] = result_row
     return results
+
 
 def dijkstras_algorithm_with_early_stopping(start_vertex, target_vertices):
     visited = set()
@@ -272,20 +316,21 @@ def dijkstras_algorithm_with_early_stopping(start_vertex, target_vertices):
         for edge, neighbor in u.onward_edges.items():
             if neighbor.id not in visited:
                 alt = dist_u + edge.length
-                if alt < dists.get(neighbor.id, float('inf')):
+                if alt < dists.get(neighbor.id, float("inf")):
                     dists[neighbor.id] = alt
                     heapq.heappush(heap, (alt, neighbor))
     return dists
+
 
 def find_shortest_edge_path(start_vertex, end_vertex):
     """
     Find the shortest path between two vertices using Dijkstra's algorithm.
     Only traverses onward edges (respects directed graph structure).
-    
+
     Args:
         start_vertex: Vertex object to start from
         end_vertex: Vertex object to reach
-    
+
     Returns:
         tuple: (total_distance, path_edges) where:
             - total_distance: float, sum of edge lengths along shortest path
@@ -293,70 +338,80 @@ def find_shortest_edge_path(start_vertex, end_vertex):
         Returns (float('inf'), []) if no path exists.
     """
     import heapq
-    
+
     if start_vertex == end_vertex:
         return (0.0, [])
-    
+
     # Dijkstra's algorithm with path tracking
     visited = set()
     heap = [(0, start_vertex)]  # (distance, vertex)
     distances = {start_vertex.id: 0}
     previous = {}  # Maps vertex_id -> (previous_vertex, edge_used)
-    
+
     while heap:
         current_dist, current_vertex = heapq.heappop(heap)
-        
+
         if current_vertex.id in visited:
             continue
-            
+
         visited.add(current_vertex.id)
-        
+
         # Found target vertex
         if current_vertex == end_vertex:
             # Reconstruct path by backtracking
             path_edges = []
             current = end_vertex
-            
+
             while current.id in previous:
                 prev_vertex, edge_used = previous[current.id]
                 path_edges.append(edge_used)
                 current = prev_vertex
-            
+
             # Reverse to get path from start to end
             path_edges.reverse()
             return (current_dist, path_edges)
-        
+
         # Explore neighbors via onward edges
         for edge, neighbor in current_vertex.onward_edges.items():
             if neighbor.id not in visited and not edge.detached:
                 alt_dist = current_dist + edge.length
-                
-                if alt_dist < distances.get(neighbor.id, float('inf')):
+
+                if alt_dist < distances.get(neighbor.id, float("inf")):
                     distances[neighbor.id] = alt_dist
                     previous[neighbor.id] = (current_vertex, edge)
                     heapq.heappush(heap, (alt_dist, neighbor))
-    
-    # No path found
-    return (float('inf'), [])
 
-def generate_network_distances_dict(vertex_layers):    
-    data_output_dict = {     }
+    # No path found
+    return (float("inf"), [])
+
+
+def generate_network_distances_dict(vertex_layers):
+    data_output_dict = {}
 
     logger.debug("Computing all-pairs network distances between layers...")
-    for i in range(len(vertex_layers)-1):
-        result = all_pairs_network_distances_between_layers(vertex_layers[i], vertex_layers[i+1])        
+    for i in range(len(vertex_layers) - 1):
+        result = all_pairs_network_distances_between_layers(
+            vertex_layers[i], vertex_layers[i + 1]
+        )
         transition = {}
         for k, v in result.items():
-            transition[k.id] = {vv.id: round(dist, 3) for vv, dist in v.items() if dist is not float('inf')}
+            transition[k.id] = {
+                vv.id: round(dist, 3)
+                for vv, dist in v.items()
+                if dist is not float("inf")
+            }
         data_output_dict[i] = transition
 
     return data_output_dict
 
+
 def process_trip(lats, lons, cell_range=0, max_dist=50):
-    vertex_layers = project_trip_coordinates_onto_edges(lats, lons,
-                                                        cell_range=cell_range, max_dist=max_dist)
+    vertex_layers = project_trip_coordinates_onto_edges(
+        lats, lons, cell_range=cell_range, max_dist=max_dist
+    )
     if vertex_layers is None:
         return None
     data_output_dict = generate_network_distances_dict(vertex_layers)
 
     return data_output_dict
+
