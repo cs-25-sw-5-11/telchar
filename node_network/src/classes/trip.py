@@ -7,14 +7,15 @@ class Trip:
     """Represents a trip consisting of a sequence of GPS points,
     and the projections of these points onto the network."""
     
-    def __init__(self, trip_id: int, 
+    def __init__(self, network: Network, 
+                 trip_id: int, 
                  lats: list[float], lons: list[float], 
                  times: list[float]):
         self.trip_id = trip_id
         self.lats = lats
         self.lons = lons
         self.times = times
-        self.dummy_network = Network()
+        self.network = network
         self._point_projection_id_counter = 1
         self._point_projections: Dict[int, 'PointProjection'] = {}
         self._point_projection_bin_lookup: Dict[Tuple[int, int], List['PointProjection']] = {}
@@ -38,7 +39,7 @@ class Trip:
         self._point_projection_id_counter += 1
         return point_projection_id
 
-    def plot_trip(self, network: Network, edge_ids: list[int], vertex_ids: list[int], point_projection_ids: list[int]) -> None:
+    def plot_trip(self, edge_ids: list[int], vertex_ids: list[int], point_projection_ids: list[int]) -> None:
         """Plot the trip's GPS points, along with specified edges, vertices, and point projections."""
         import matplotlib.pyplot as plt
 
@@ -48,7 +49,7 @@ class Trip:
         # Plot edges, but each edge in a different color
         color_map = ['r', 'g', 'm', 'c', 'y', 'k']
         for i, edge_id in enumerate(edge_ids):
-            edge = network.get_edge_by_id(edge_id)
+            edge = self.network.get_edge_by_id(edge_id)
             if edge is not None:
                 edge_lats = [node[0] for node in edge.get_all_nodes()]
                 edge_lons = [node[1] for node in edge.get_all_nodes()]
@@ -56,13 +57,13 @@ class Trip:
 
         # Plot vertices
         for vertex_id in vertex_ids:
-            vertex = network.get_vertex_by_id(vertex_id)
+            vertex = self.network.get_vertex_by_id(vertex_id)
             if vertex is not None:
                 plt.plot(vertex.lon, vertex.lat, 's', color='red', label=f'Vertex {vertex_id}')
 
         # Plot point projections
         for pp_id in point_projection_ids:
-            pp = next((pp for pp in self._point_projections if pp.id == pp_id), None)
+            pp = self.get_point_projection_by_id(pp_id)
             if pp is not None:
                 plt.plot(pp.lon, pp.lat, 'x', color='orange', label=f'PointProjection {pp_id}')
 
@@ -72,8 +73,7 @@ class Trip:
         plt.legend()
         plt.show()
 
-    def _project_trip_point(self, network: Network, 
-                            lat: float, lon: float, 
+    def _project_trip_point(self, lat: float, lon: float, 
                             max_dist: float) -> set[Edge]:
         """Projects a single GPS point onto nearby edges in the network,
         returning a set of vertices.
@@ -85,7 +85,7 @@ class Trip:
 
         # Get nearby edges and determine valid projections onto them.
         valid_projections = []
-        nearby_edges = network.get_edges_near_coordinate(lat, lon)
+        nearby_edges = self.network.get_edges_near_coordinate(lat, lon)
         for edge in nearby_edges:
             proj_lat, proj_lon, dist_m, seg_idx, seg_t = edge.project_coordinates_onto_edge(lat, lon)        
 
@@ -144,19 +144,19 @@ class Trip:
 
         return projection_layer
     
-    def _project_trip_onto_network(self, network: Network, max_dist: float) -> None:
+    def _project_trip_onto_network(self, max_dist: float) -> None:
         """Project the trip's GPS points onto the given network, storing the resulting projections and vertices
         (where a vertex is used if one exists where a projection would have been) as layers, with each layer
         corresponding to projections at one point in the trip."""
         for lat, lon in zip(self.lats, self.lons):
-            new_projection_layers = self._project_trip_point(network, lat, lon, max_dist)
+            new_projection_layers = self._project_trip_point(lat, lon, max_dist)
             self._projection_layers.append(new_projection_layers)
 
-    def compute_layer_distances(self, network: Network, max_dist: float=100) -> None:
+    def compute_layer_distances(self, max_dist: float=100) -> None:
         """Compute the distance matrix between each layer of projections/vertices
         for the trip, returning a dictionary where each key is a layer index,
         and each value is another dictionary mapping projection IDs to their distances."""
-        self._project_trip_onto_network(network, max_dist)
+        self._project_trip_onto_network(max_dist)
 
         result_dict = {}
         for i in range(len(self._projection_layers) - 1):
@@ -169,16 +169,16 @@ class Trip:
                 for next_projection in next_layer:
                     if type(current_projection) is Vertex:
                         if type(next_projection) is Vertex:
-                            distance = network.get_distance(current_projection, next_projection)
+                            distance = self.network.get_distance(current_projection, next_projection)
                         elif type(next_projection) is PointProjection:
-                            distance = next_projection.get_distance_from_vertex(network, current_projection)
+                            distance = next_projection.get_distance_from_vertex(self.network, current_projection)
                         else:
                             raise ValueError("Unknown projection types.")
                     elif type(current_projection) is PointProjection:
                         if type(next_projection) is Vertex:
-                            distance = current_projection.get_distance_to_vertex(network, next_projection)
+                            distance = current_projection.get_distance_to_vertex(self.network, next_projection)
                         elif type(current_projection) is PointProjection and type(next_projection) is PointProjection:
-                            distance = current_projection.get_distance_between_projections(network, next_projection)
+                            distance = current_projection.get_distance_between_projections(self.network, next_projection)
                         else:
                             raise ValueError("Unknown projection types.")
                     else:
