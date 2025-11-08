@@ -1,22 +1,24 @@
+import csv
 import os
 from glob import glob
-from utils.functions_misc import vector_haversine
-from utils.csv_io import read_csv_stream
-from typing import List, TextIO, Iterable
-import csv
+from typing import Iterable, List
+
 import numpy as np
 from configs.config import SPEED_LIMIT
+from utils.csv_io import read_csv_stream
+from utils.functions_misc import vector_haversine
 
 
 def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:
     for i in range(1, len(current_trip_rows)):
-        if (current_trip_rows[i][timestamp_idx] == current_trip_rows[i - 1][timestamp_idx]):
+        current_timestamp = current_trip_rows[i][timestamp_idx]
+        prev_timestamp = current_trip_rows[i - 1][timestamp_idx]
+        if current_timestamp == prev_timestamp:
             return True
     return False
 
 
 def check_has_high_speed(trip_rows, timestamp_idx, lat_idx, lon_idx) -> bool:
-
     rows = np.array(trip_rows, dtype=float)
     timestamps = rows[:, timestamp_idx]
     lats = rows[:, lat_idx]
@@ -43,7 +45,9 @@ def get_csv_files(input_dir: str) -> List[str]:
     return files
 
 
-def is_valid_trip(trip_rows: List[List[str]], ts_idx: int, lat_idx: int, lon_idx: int) -> bool:
+def is_valid_trip(
+    trip_rows: List[List[str]], ts_idx: int, lat_idx: int, lon_idx: int
+) -> bool:
     repeated_timestamp = check_has_repeated_timestamp(trip_rows, ts_idx)
     high_speed = check_has_high_speed(trip_rows, ts_idx, lat_idx, lon_idx)
 
@@ -55,15 +59,15 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
     return selected_rows
 
 
-def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.writer, relevant_trip_columns: List[int]) -> None:
-
+def process_and_write_trip_stream(
+    stream: Iterable[List[str]], writer: csv.writer, relevant_trip_columns: List[int]
+) -> None:
     trip_id_idx, lat_idx, lon_idx, timestamp_idx = 0, 1, 2, 3
 
     current_trip = []
     prev_trip_id = None
 
     for row in stream:
-
         if len(row) < max(relevant_trip_columns):
             continue
 
@@ -79,7 +83,9 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
         is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id
 
         if is_new_trip:
-            if current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
+            if current_trip and is_valid_trip(
+                current_trip, timestamp_idx, lat_idx, lon_idx
+            ):
                 writer.writerows(current_trip)
             current_trip = []
         current_trip.append(new_row)
@@ -97,13 +103,20 @@ def file_already_cleaned(file_path: str, output_dir: str) -> bool:
     cleaned_file_path = os.path.join(output_dir, file_name)
     cleaned_file_already = os.path.exists(cleaned_file_path)
     if cleaned_file_already:
-        print(f'skipping cleaning: {file_name}, file already cleaned. ')
+        print(f"skipping cleaning: {file_name}, file already cleaned. ")
         return True
 
     return False
 
 
-def clean_trips(input_dir: str, output_dir: str, trip_id_column: int, lat_column: int, lon_column: int, timestamp_column: int) -> List[str]:
+def clean_trips(
+    input_dir: str,
+    output_dir: str,
+    trip_id_column: int,
+    lat_column: int,
+    lon_column: int,
+    timestamp_column: int,
+) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
     relevant_trip_columns = [
         trip_id_column,
@@ -127,11 +140,8 @@ def clean_trips(input_dir: str, output_dir: str, trip_id_column: int, lat_column
             writer = csv.writer(fout)
             writer.writerow(header)
 
-            process_and_write_trip_stream(
-                stream, writer, relevant_trip_columns)
-        
+            process_and_write_trip_stream(stream, writer, relevant_trip_columns)
 
-
-    #return cleaned data files
+    # return cleaned data files
 
     return output_files
