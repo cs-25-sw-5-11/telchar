@@ -181,14 +181,14 @@ def main() -> None:
         # Load and filter trip data
         df = pd.read_csv(f"data/cleaned_data/{trip_file}")
         next_writeout = WRITEOUT_INTERVAL
-        df["trip_id"].max()
+        max_trip = df["trip_id"].max()
 
         lats = None
         lons = None
         best_path_vertex_coords = None
 
         # TODO change to full length of cleaned file instead of trip 3-8
-        for trip_id in tqdm(range(3, 8), desc=f"Processing trips in {trip_file}"):
+        for trip_id in tqdm(range(max_trip), desc=f"Processing trips in {trip_file}"):
             # Reset network state before processing each trip.
             # Here instead of at the end due to possible early continues.
             restore_network_to_original_state()
