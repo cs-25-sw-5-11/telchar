@@ -11,10 +11,9 @@ from utils.functions_misc import vector_haversine
 
 def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:
     for i in range(1, len(current_trip_rows)):
-        if (
-            current_trip_rows[i][timestamp_idx]
-            == current_trip_rows[i - 1][timestamp_idx]
-        ):
+        current_timestamp = current_trip_rows[i][timestamp_idx]
+        prev_timestamp = current_trip_rows[i - 1][timestamp_idx]
+        if current_timestamp == prev_timestamp:
             return True
     return False
 
