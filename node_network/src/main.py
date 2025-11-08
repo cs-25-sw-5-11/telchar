@@ -170,7 +170,7 @@ def main() -> None:
 
     build_graph(cleaned_nodes_file, cleaned_roads_file)
 
-    _network = find_network()
+    _ = find_network()
 
     if COMPARE_STATES:
         # Capture original state for later comparison
