@@ -31,18 +31,8 @@ class Trip:
         for i in range(len(best_path)-1):
             dist, edges = self.find_shortest_edge_path(start_item_id = best_path[i], end_item_id = best_path[i+1])
             speed = dist / (times[i+1] - times[i])  # m/s
-            print("printing speed of best path:", speed)
             time_index = get_time_index(timestamp=times[i], reference=0, interval=time_interval)
             self.apply_speed_to_edges(edges, time_index, speed)
-            if i == 1:
-                for projection_id in [3, 13]:
-                    projection = self.get_point_projection_by_id(projection_id)
-                    edge = projection.parent_edge
-                    start = edge.start
-                    end = edge.end
-                    print(f'Edge oneway? {edge.oneway}')
-                    print(f'Distance from {start.id} to {end.id}: {self.network.get_distance(start, end)} meters')
-                    print(f'Distance from {end.id} to {start.id}: {self.network.get_distance(end, start)} meters')
 
     def get_id_max(self) -> int:
         """Get the maximum ID used in this trip (for vertices and point projections)."""

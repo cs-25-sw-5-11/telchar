@@ -97,6 +97,8 @@ def backtrace_best_path(V, path):
 
 
 def viterbi_algorithm(raw_data):
+    if len(raw_data) < 2:
+        return []
     observations = load_observations(raw_data)
     states_per_t = get_states_per_time(observations)
     result = run_viterbi(observations, states_per_t)

@@ -94,7 +94,7 @@ def main() -> None:
         next_writeout = WRITEOUT_INTERVAL
         max_trip = df['trip_id'].max()
 
-        for trip_id in tqdm(range(max_trip + 1), desc=f"Processing trips in {trip_file}"):
+        for trip_id in tqdm(range(100), desc=f"Processing trips in {trip_file}"):
             lats, lons, times = get_trip_data(df=df, trip_id=trip_id, time_reference=UNIX_REFERENCE)
 
             trip = Trip(network, trip_id, lats, lons, times)
@@ -102,10 +102,25 @@ def main() -> None:
             best_path = viterbi_algorithm(trip_layer_distances)
             trip.process_and_apply_best_path(best_path, times, TIME_INTERVAL)
 
-    return
-    total_time_intervals = 24 * 60 * 60 / TIME_INTERVAL
+    total_time_intervals = int(24 * 60 * 60 / TIME_INTERVAL)
     network.mark_missing_edge_traversals(max_time_index=total_time_intervals)
 
+    import csv
+
+    with open('temp_result.csv', 'w', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        fieldnames = ['edge_id']
+        for i in range(total_time_intervals):
+            fieldnames.append(f'time_idx_{i}')
+        csv_writer.writerow(fieldnames)
+        for edge in network.get_all_edges():
+            row = [edge.id]
+            for time_idx in range(total_time_intervals):
+                mean, variance, total_length = edge.traversals_data[time_idx]
+                row.append(mean)
+            csv_writer.writerow(row)
+
+    return
     # Write vertex connections to json file
     writeout_final_result()
     return None

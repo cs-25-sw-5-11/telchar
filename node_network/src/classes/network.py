@@ -31,12 +31,12 @@ class Network:
         self._vertex_id_to_index: Dict[int, int] = {}
         self._index_to_vertex_id: Dict[int, int] = {}
 
-    def mark_missing_edge_traversals(self, max_time_index):
-        """Mark edges that were not traversed in for any time index with -1.0 speed."""
+    def mark_missing_edge_traversals(self, max_time_index: int):
+        """Mark edges that were not traversed in for any time index with -1 speed."""
         for edge in tqdm(self._edges.values(), desc="Marking missing edge traversals"):
             for time_index in range(max_time_index):
                 if time_index not in edge.traversals_data:
-                    edge.traversals_data[time_index] = (-1.0, 0.0, 0)
+                    edge.traversals_data[time_index] = (-1, 0, 0)
 
     def plot_network_within_bins(self, bin_list: List[Tuple[int, int]]) -> None:
         """Plot all edges and vertices within the specified bins."""

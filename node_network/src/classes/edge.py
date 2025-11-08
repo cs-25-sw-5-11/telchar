@@ -166,9 +166,8 @@ class Edge:
             delta1 = speed - existing_mean
             delta2 = speed - new_mean
             new_variance = (existing_variance * total_traversals + 1 * delta1 * delta2) / total_weight
-            new_variance = int(new_variance)
 
-            self.traversals_data[time_index] = (new_mean, new_variance, total_weight)
+            self.traversals_data[time_index] = (int(new_mean), int(new_variance), total_weight)
         else:
             self.traversals_data[time_index] = (speed, 0.0, 1)
     
