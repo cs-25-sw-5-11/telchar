@@ -1,5 +1,6 @@
 import heapq
 import logging
+import numpy as np
 
 from classes.classes import Edge, Vertex
 from configs.config import (
@@ -290,14 +291,27 @@ def all_pairs_network_distances_between_layers(layer1, layer2):
     """
 
     results = {}
-    layer2_ids = set(v.id for v in layer2)
+    print(f"verted id to index {Vertex._vertex_id_to_index}")
     for v1 in layer1:
-        dists = dijkstras_algorithm_with_early_stopping(v1, layer2_ids)
-        # Collect distances to all layer2 vertices
+        # Get the row index of v1 in the matrix
+
+        print("v1 id: ", v1.id)
+        row_idx = Vertex._vertex_id_to_index[v1.id]
+        row = Vertex._distance_matrix[row_idx]  # distances from v1 to all vertices
+
         result_row = {}
         for v2 in layer2:
-            result_row[v2] = dists.get(v2.id, float("inf"))
+            col_idx = Vertex._vertex_id_to_index[v2.id]
+            dist = row[col_idx]
+
+            # Optional: convert NumPy inf to Python float("inf")
+            if np.isinf(dist):
+                dist = float("inf")
+
+            result_row[v2] = dist
+
         results[v1] = result_row
+
     return results
 
 
@@ -414,4 +428,3 @@ def process_trip(lats, lons, cell_range=0, max_dist=50):
     data_output_dict = generate_network_distances_dict(vertex_layers)
 
     return data_output_dict
-

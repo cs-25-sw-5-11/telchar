@@ -1,18 +1,24 @@
 import logging
 from math import sqrt
-from typing import Set, Tuple
-
+from typing import Set, Tuple, Dict, Optional
 from configs.config import METERS_PER_DEGREE
 from utils.functions_misc import get_bin_indices, haversine
-
+import numpy as np
+import tqdm 
+import os
+import heapq as heapq
 logger = logging.getLogger(__name__)
 
 
 class Vertex:
     _vertex_dict = {}  # Class-level dictionary: node_id -> Vertex object
+    _distance_matrix: Optional[np.ndarray] = None
+
     _temporary_vertices = set()  # Set of temporary vertices
     _id_counter = 1  # Class-level counter for unique Vertex IDs
     _bin_lookup = {}  # Class-level reverse lookup: (lat_idx, lon_idx) -> [vertices]
+    _vertex_id_to_index: Dict[int, int] = {}
+    _index_to_vertex_id: Dict [int, int] = {} 
 
     @classmethod
     def clear_all(cls) -> None:
@@ -75,6 +81,81 @@ class Vertex:
     def get_vertices_in_bin(cls, lat_idx: int, lon_idx: int) -> list["Vertex"]:
         """Public function to get all vertices in a specific bin"""
         return cls._bin_lookup.get((lat_idx, lon_idx), [])
+
+    @classmethod
+    def calculate_distance_matrix(cls) -> np.ndarray:
+        path = "matrix.npy"
+        if os.path.exists(path):
+            print("distance matrix already exists, skipping calculating it ")
+            cls._distance_matrix = np.load(path)
+            cls._create_vertex_index_mapping()
+            return 
+        """Precompute shortest distances between all vertex pairs using Dijkstra from each vertex."""
+        print("Computing all-pairs shortest distances...")
+        vertices = cls.get_all_vertices()
+        
+        # Create vertex ID to matrix index mapping
+        cls._create_vertex_index_mapping()
+        
+        # Initialize distance matrix with a large value representing infinity for int32
+        # int32 max value is far larger than any realistic distance in a network, so
+        # it's used to cut down on memory usage.
+        n = len(vertices)
+        INF_VALUE  = np.iinfo(np.int32).max
+        cls._distance_matrix = np.full((n, n), INF_VALUE, dtype=np.int32)
+        
+        for source_vertex in tqdm.tqdm(vertices, desc="Computing distances"):
+            distances = cls._dijkstra_algorithm(source_vertex)
+            source_idx = cls._vertex_id_to_index[source_vertex.id]
+            
+            # Fill matrix row for this source vertex
+            for target_id, distance in distances.items():
+                target_idx = cls._vertex_id_to_index[target_id]
+                # Convert to centimeters and store as integer
+                distance_cm = int(distance * 100)
+                cls._distance_matrix[source_idx, target_idx] = distance_cm
+
+        np.save(path, cls._distance_matrix)
+
+        return
+
+    
+
+    @classmethod
+    def _dijkstra_algorithm(cls, source_vertex) -> Dict[int, float]:
+        """Run Dijkstra from a single source vertex to all other vertices."""
+        distances = {source_vertex.id: 0.0}
+        heap = [(0.0, source_vertex.id)]
+        visited = set()
+        
+        while heap:
+            current_dist, current_id = heapq.heappop(heap)
+            
+            if current_id in visited:
+                continue
+            visited.add(current_id)
+            
+            current_vertex: Vertex = cls.get_vertex_by_id(current_id)
+            for edge in current_vertex.get_outward_edges():
+                neighbor_id = edge.end.id
+                new_dist = current_dist + edge.length
+                
+                if neighbor_id not in distances or new_dist < distances[neighbor_id]:
+                    distances[neighbor_id] = new_dist
+                    heapq.heappush(heap, (new_dist, neighbor_id))
+        
+        return distances
+
+    @classmethod
+    def _create_vertex_index_mapping(cls) -> None:
+        """Create bidirectional mapping between vertex IDs and matrix indices."""
+        cls._vertex_id_to_index.clear()
+        cls._index_to_vertex_id.clear()
+        vertices = cls.get_all_vertices()
+        
+        for idx, vertex in enumerate(vertices):
+            cls._vertex_id_to_index[vertex.id] = idx
+            cls._index_to_vertex_id[idx] = vertex.id
 
     def __new__(
         cls, lat: float, lon: float, node_id: int = None, temporary: bool = False

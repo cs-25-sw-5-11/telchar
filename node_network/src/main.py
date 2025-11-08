@@ -169,6 +169,13 @@ def main() -> None:
     )
 
     build_graph(cleaned_nodes_file, cleaned_roads_file)
+    #calculate distance matrix
+    
+    Vertex.calculate_distance_matrix()
+    
+    
+
+
 
     _ = find_network()
 
@@ -188,7 +195,7 @@ def main() -> None:
         best_path_vertex_coords = None
 
         # TODO change to full length of cleaned file instead of trip 3-8
-        for trip_id in tqdm(range(max_trip), desc=f"Processing trips in {trip_file}"):
+        for trip_id in tqdm(range(200), desc=f"Processing trips in {trip_file}"):
             # Reset network state before processing each trip.
             # Here instead of at the end due to possible early continues.
             restore_network_to_original_state()
