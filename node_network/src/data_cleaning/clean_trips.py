@@ -68,9 +68,6 @@ def process_and_write_trip_stream(
     prev_trip_id = None
 
     for row in stream:
-        if len(row) < max(relevant_trip_headers):
-            continue
-
         new_row = row.copy()
         try:
             new_row[lat_idx] = f"{round(float(new_row[lat_idx]), 5)}"
