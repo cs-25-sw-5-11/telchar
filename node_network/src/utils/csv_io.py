@@ -2,7 +2,9 @@ import csv
 from typing import Generator, List
 
 
-def read_csv_stream(file_path: str, headers: List[str]) -> Generator[List[str], None, None]:
+def read_csv_stream(
+    file_path: str, headers: List[str]
+) -> Generator[List[str], None, None]:
     """yields CSV header then, selected columns from CSV file one row at a time, to minimize RAM usage.
     Will throw error if a requested header is missing, if a row has a different number of columns than header,
     or if a row has missing values in requested columns."""
@@ -25,19 +27,22 @@ def read_csv_stream(file_path: str, headers: List[str]) -> Generator[List[str], 
         for row in reader:
             # Must have same number of columns as header
             if len(row) != header_len:
-                raise ValueError(f"Row has {len(row)} columns but header has {header_len} columns.")
+                raise ValueError(
+                    f"Row has {len(row)} columns but header has {header_len} columns."
+                )
 
             # Must have non-empty values for all selected columns
             if any((row[i].strip() == "") for i in columns):
                 raise ValueError("Row has empty value(s) in required columns.")
-            
+
             values = [row[i] for i in columns]
             # Check that values are or can be converted to float
             for value in values:
                 try:
                     float(value)
                 except ValueError as e:
-                    raise ValueError(f"Value '{value}' cannot be converted to float.") from e
+                    raise ValueError(
+                        f"Value '{value}' cannot be converted to float."
+                    ) from e
 
             yield values
-

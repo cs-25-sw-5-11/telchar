@@ -569,4 +569,3 @@ class Edge:
 
     def __eq__(self, other):
         return isinstance(other, Edge) and self.id == other.id
-

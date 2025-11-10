@@ -1,11 +1,13 @@
 from __future__ import annotations
-from typing import Optional, Dict, List, TYPE_CHECKING
-from utils.functions_misc import get_bin_indices
+
 import logging
+from typing import TYPE_CHECKING, Dict, List
+
+from utils.functions_misc import get_bin_indices
 
 if TYPE_CHECKING:
-    from .network import Network
     from .edge import Edge
+    from .network import Network
 
 logger = logging.getLogger(__name__)
 

@@ -50,17 +50,21 @@ def write_intermediate_edge_data(_writeout_timer, trip_id) -> None:
     )
     return None
 
-def get_trip_data(df: pd.DataFrame, trip_id: int, time_reference: int) -> tuple[list[float], list[float], list[float]] | None:
+
+def get_trip_data(
+    df: pd.DataFrame, trip_id: int, time_reference: int
+) -> tuple[list[float], list[float], list[float]] | None:
     try:
-        group = df[df['trip_id'] == trip_id]
-        lats = group['latitude'].tolist()
-        lons = group['longitude'].tolist()
-        times = (group['timestamp'] - time_reference).tolist()
+        group = df[df["trip_id"] == trip_id]
+        lats = group["latitude"].tolist()
+        lons = group["longitude"].tolist()
+        times = (group["timestamp"] - time_reference).tolist()
     except Exception as e:
         logger.warning(f"Skipping trip_id {trip_id} due to error: {e}")
         return None
-    
+
     return lats, lons, times
+
 
 def writeout_final_result() -> None:
     with open("vertex_data.json", "w") as f:
@@ -81,19 +85,26 @@ def writeout_final_result() -> None:
 
     return None
 
+
 def main() -> None:
-    network = build_graph(CLEANED_DATA_DIRECTORY + '/osm_nodes_output.json', CLEANED_DATA_DIRECTORY + '/osm_roads_output.json')
+    network = build_graph(
+        CLEANED_DATA_DIRECTORY + "/osm_nodes_output.json",
+        CLEANED_DATA_DIRECTORY + "/osm_roads_output.json",
+    )
     remove_small_subnetworks(network)
-    network.load_or_compute_all_pairs_distances(distances_file='all_pairs_distances.npy',
-                                                mapping_file='vertex_id_mapping.json')
+    network.load_or_compute_all_pairs_distances(
+        distances_file="all_pairs_distances.npy", mapping_file="vertex_id_mapping.json"
+    )
 
-    for trip_file in ['trips_150103.csv']:
+    for trip_file in ["trips_150103.csv"]:
         # Load and filter trip data
-        df = pd.read_csv(f'{CLEANED_DATA_DIRECTORY}/{trip_file}')
-        max_trip = df['trip_id'].max()
+        df = pd.read_csv(f"{CLEANED_DATA_DIRECTORY}/{trip_file}")
+        max_trip = df["trip_id"].max()
 
-        for trip_id in tqdm(range(6,7), desc=f"Processing trips in {trip_file}"):
-            lats, lons, times = get_trip_data(df=df, trip_id=trip_id, time_reference=UNIX_REFERENCE)
+        for trip_id in tqdm(range(max_trip), desc=f"Processing trips in {trip_file}"):
+            lats, lons, times = get_trip_data(
+                df=df, trip_id=trip_id, time_reference=UNIX_REFERENCE
+            )
 
             trip = Trip(network, trip_id, lats, lons, times)
             trip_layer_distances = trip.compute_layer_distances(max_dist=MAX_DIST)
@@ -105,11 +116,11 @@ def main() -> None:
 
     import csv
 
-    with open('temp_result.csv', 'w', newline='') as csvfile:
+    with open("temp_result.csv", "w", newline="") as csvfile:
         csv_writer = csv.writer(csvfile)
-        fieldnames = ['edge_id']
+        fieldnames = ["edge_id"]
         for i in range(total_time_intervals):
-            fieldnames.append(f'time_idx_{i}')
+            fieldnames.append(f"time_idx_{i}")
         csv_writer.writerow(fieldnames)
         for edge in network.get_all_edges():
             row = [edge.id]
@@ -122,6 +133,7 @@ def main() -> None:
 
     # Todo: Fix JSON output
     # writeout_final_result()
+
 
 if __name__ == "__main__":
     main()

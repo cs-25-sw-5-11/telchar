@@ -1,7 +1,7 @@
-import json
 import logging
 
 logger = logging.getLogger(__name__)
+
 
 def load_observations(raw_data):
     total_observations = []
@@ -71,7 +71,7 @@ def run_viterbi(observations, states_per_t):
 
         if not next_path:
             logger.debug("cannot find path")
-            return None  
+            return None
         path = next_path
 
     return V, path

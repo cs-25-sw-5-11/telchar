@@ -11,12 +11,20 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class Edge:
     """Represents an edge/connection in the graph"""
-    
-    def __init__(self, network: Network, start_vertex: Vertex, end_vertex: Vertex, 
-                 non_vertex_nodes: List[Tuple[float, float, int]], edge_type: str, 
-                 oneway: bool, parent_edge: Optional['Edge'] = None):
+
+    def __init__(
+        self,
+        network: Network,
+        start_vertex: Vertex,
+        end_vertex: Vertex,
+        non_vertex_nodes: List[Tuple[float, float, int]],
+        edge_type: str,
+        oneway: bool,
+        parent_edge: Optional["Edge"] = None,
+    ):
         self._network = network
         self.start = start_vertex
         self.end = end_vertex
@@ -27,34 +35,34 @@ class Edge:
         self.detached = False
         self.highlighted = False
         self.traversals_data: Dict[int, Tuple[float, float, int]] = {}
-        
+
         # Set parent edge
         if parent_edge is None:
             self.parent_edge = self
         else:
             self.parent_edge = parent_edge
-        
+
         # Get ID from network
         self.id = network.get_next_edge_id()
-        
+
         # Calculate bins covered
         self.bins_covered = self._calculate_bins_covered()
-        
+
         # Connect vertices
         self.start.onward_edges[self] = self.end
         self.end.backward_edges[self] = self.start
         if not self.oneway:
             self.end.onward_edges[self] = self.start
             self.start.backward_edges[self] = self.end
-        
+
         # Add to network
         network.add_edge(self)
-    
+
     @property
     def network(self) -> Network:
         """The network this edge belongs to"""
         return self._network
-    
+
     def get_all_nodes(self) -> List[Tuple[float, float]]:
         """Get all nodes (vertices and non-vertex nodes) along this edge in order"""
         nodes = [(self.start.lat, self.start.lon)]
@@ -62,53 +70,63 @@ class Edge:
             nodes.append((lat, lon))
         nodes.append((self.end.lat, self.end.lon))
         return nodes
-    
+
     def calculate_length(self) -> float:
-        points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
+        points = (
+            [(self.start.lat, self.start.lon)]
+            + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes]
+            + [(self.end.lat, self.end.lon)]
+        )
         total = 0.0
         for i in range(len(points) - 1):
-            total += haversine(points[i][0], points[i][1], points[i+1][0], points[i+1][1])
+            total += haversine(
+                points[i][0], points[i][1], points[i + 1][0], points[i + 1][1]
+            )
         return total
-    
+
     def _calculate_bins_covered(self) -> Set[Tuple[int, int]]:
-        """Calculate which spatial bins this edge covers"""        
+        """Calculate which spatial bins this edge covers"""
         bins_covered = set()
-        
+
         # Get all points along the edge
-        points = [(self.start.lat, self.start.lon)] + \
-                [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + \
-                [(self.end.lat, self.end.lon)]
-        
+        points = (
+            [(self.start.lat, self.start.lon)]
+            + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes]
+            + [(self.end.lat, self.end.lon)]
+        )
+
         # Add bins for each point
         for lat, lon in points:
             bin_coords = get_bin_indices(lat, lon)
             if bin_coords is not None:
                 bins_covered.add(bin_coords)
-        
+
         # Interpolate between points to catch bins the edge passes through
         for i in range(len(points) - 1):
             lat1, lon1 = points[i]
             lat2, lon2 = points[i + 1]
-            
+
             # Sample points along the segment
-            num_samples = max(10, int(haversine(lat1, lon1, lat2, lon2) / 50))  # Sample every ~50m
+            num_samples = max(
+                10, int(haversine(lat1, lon1, lat2, lon2) / 50)
+            )  # Sample every ~50m
             for j in range(num_samples + 1):
                 t = j / num_samples if num_samples > 0 else 0
                 sample_lat = lat1 + t * (lat2 - lat1)
                 sample_lon = lon1 + t * (lon2 - lon1)
-                
+
                 bin_coords = get_bin_indices(sample_lat, sample_lon)
                 if bin_coords is not None:
                     bins_covered.add(bin_coords)
-        
+
         return bins_covered
-    
+
     def delete_edge(self) -> None:
         """Delete this edge from the network"""
         self._remove_references_to_edge()
         if self._network:
             self._network.remove_edge(self)
-    
+
     def _remove_references_to_edge(self) -> None:
         """Remove this edge from vertex connections"""
         if self in self.start.onward_edges:
@@ -120,7 +138,7 @@ class Edge:
                 del self.end.onward_edges[self]
             if self in self.start.backward_edges:
                 del self.start.backward_edges[self]
-    
+
     def _restore_references_to_edge(self) -> None:
         """Restore this edge's vertex connections"""
         self.start.onward_edges[self] = self.end
@@ -128,62 +146,76 @@ class Edge:
         if not self.oneway:
             self.end.onward_edges[self] = self.start
             self.start.backward_edges[self] = self.end
-        
+
         if self._network:
             self._network._edges[self.id] = self
-        
+
         self.detached = False
-        
+
         # Remove from detached edges
         if self._network and self in self._network._detached_edges:
             self._network._detached_edges.remove(self)
-    
+
     def detach_edge(self) -> None:
         """Detach this edge temporarily (for reversible operations)"""
         if self.detached:
             return
-        
+
         self._remove_references_to_edge()
         self.detached = True
-        
+
         if self._network:
             self._network._detached_edges.add(self)
-    
+
     def traversals_data_update(self, time_index: int, speed: float) -> None:
         """Update traversal statistics for this edge, using cm/s to reduce memory usage."""
         # If speed is infinity, ignore. Something went wrong.
-        if speed == float('inf'):
+        if speed == float("inf"):
             return
 
         speed = int(speed * 100)  # Convert m/s to cm/s
 
         if time_index in self.traversals_data:
-            existing_mean, existing_variance, total_traversals = self.traversals_data[time_index]
+            existing_mean, existing_variance, total_traversals = self.traversals_data[
+                time_index
+            ]
 
             total_weight = total_traversals + 1
             new_mean = existing_mean + 1 * (speed - existing_mean) / total_weight
 
             delta1 = speed - existing_mean
             delta2 = speed - new_mean
-            new_variance = (existing_variance * total_traversals + 1 * delta1 * delta2) / total_weight
+            new_variance = (
+                existing_variance * total_traversals + 1 * delta1 * delta2
+            ) / total_weight
 
-            self.traversals_data[time_index] = (int(new_mean), int(new_variance), total_weight)
+            self.traversals_data[time_index] = (
+                int(new_mean),
+                int(new_variance),
+                total_weight,
+            )
         else:
             self.traversals_data[time_index] = (speed, 0.0, 1)
-    
-    def project_coordinates_onto_edge(self, lat: float, lon: float) -> Tuple[float, float, float, int]:
+
+    def project_coordinates_onto_edge(
+        self, lat: float, lon: float
+    ) -> Tuple[float, float, float, int]:
         """Project coordinates onto this edge and return closest point, distance, and segment index"""
-        points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
-        min_dist_sq = float('inf')  # Use squared distance to avoid sqrt in the loop
+        points = (
+            [(self.start.lat, self.start.lon)]
+            + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes]
+            + [(self.end.lat, self.end.lon)]
+        )
+        min_dist_sq = float("inf")  # Use squared distance to avoid sqrt in the loop
         proj_point = None
         seg_idx = -1
-        
+
         for i in range(len(points) - 1):
             x0, y0 = points[i]
-            x1, y1 = points[i+1]
+            x1, y1 = points[i + 1]
             px, py = lat, lon
             dx, dy = x1 - x0, y1 - y0
-            
+
             if dx == 0 and dy == 0:
                 # Degenerate segment (zero length)
                 proj = (x0, y0)
@@ -193,7 +225,7 @@ class Edge:
                 t = ((px - x0) * dx + (py - y0) * dy) / (dx * dx + dy * dy)
                 t = max(0, min(1, t))  # Clamp to segment
                 proj = (x0 + t * dx, y0 + t * dy)
-            
+
             # Calculate squared distance (avoid sqrt for comparison)
             dist_sq = (proj[0] - px) ** 2 + (proj[1] - py) ** 2
             if dist_sq < min_dist_sq:
@@ -201,39 +233,47 @@ class Edge:
                 proj_point = proj
                 seg_idx = i
                 seg_t = t
-        
+
         if proj_point is not None:
             # Convert distance from degrees to meters using region-specific constant
             min_dist_degrees = sqrt(min_dist_sq)
             min_dist_m = min_dist_degrees * METERS_PER_DEGREE
         else:
             min_dist_m = None
-            
+
         return (proj_point[0], proj_point[1], min_dist_m, seg_idx, seg_t)
-    
+
     def get_projection_distance_from_start(self, seg_idx: int, seg_t: float) -> float:
         """Get distance along edge from start vertex to projected point"""
-        points = [(self.start.lat, self.start.lon)] + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes] + [(self.end.lat, self.end.lon)]
+        points = (
+            [(self.start.lat, self.start.lon)]
+            + [(lat, lon) for lat, lon, _ in self.non_vertex_nodes]
+            + [(self.end.lat, self.end.lon)]
+        )
         total_distance = 0.0
-        
+
         # Sum distances of full segments before seg_idx
         for i in range(seg_idx):
-            total_distance += haversine(points[i][0], points[i][1], points[i+1][0], points[i+1][1])
-        
+            total_distance += haversine(
+                points[i][0], points[i][1], points[i + 1][0], points[i + 1][1]
+            )
+
         # Add distance of partial segment at seg_idx
         if seg_idx < len(points) - 1:
             lat1, lon1 = points[seg_idx]
             lat2, lon2 = points[seg_idx + 1]
             segment_length = haversine(lat1, lon1, lat2, lon2)
             total_distance += segment_length * seg_t
-        
+
         return total_distance
-    
-    def split_edge_along_vertex(self, vertex: 'Vertex', temporary: bool = False) -> Optional[Tuple['Edge', 'Edge']]:
+
+    def split_edge_along_vertex(
+        self, vertex: "Vertex", temporary: bool = False
+    ) -> Optional[Tuple["Edge", "Edge"]]:
         """Split edge along a vertex that lies on the edge (finds vertex by ID in non_vertex_nodes)"""
         if vertex in (self.start, self.end):
             return None  # No split needed
-        
+
         found_idx = None
         for idx, (lat, lon, node_id) in enumerate(self.non_vertex_nodes):
             # Ensure consistent type comparison - convert both to int
@@ -248,21 +288,21 @@ class Edge:
 
         edge1 = Edge(
             network=self._network,
-            start_vertex=self.start, 
-            end_vertex=vertex, 
-            non_vertex_nodes=self.non_vertex_nodes[:found_idx], 
-            edge_type=self.type, 
+            start_vertex=self.start,
+            end_vertex=vertex,
+            non_vertex_nodes=self.non_vertex_nodes[:found_idx],
+            edge_type=self.type,
             oneway=self.oneway,
-            parent_edge=self.parent_edge
+            parent_edge=self.parent_edge,
         )
         edge2 = Edge(
             network=self._network,
-            start_vertex=vertex, 
-            end_vertex=self.end, 
-            non_vertex_nodes=self.non_vertex_nodes[found_idx+1:], 
-            edge_type=self.type, 
+            start_vertex=vertex,
+            end_vertex=self.end,
+            non_vertex_nodes=self.non_vertex_nodes[found_idx + 1 :],
+            edge_type=self.type,
             oneway=self.oneway,
-            parent_edge=self.parent_edge
+            parent_edge=self.parent_edge,
         )
 
         if temporary:
@@ -278,12 +318,13 @@ class Edge:
             self.delete_edge()
 
         return edge1, edge2
-    
+
     def __repr__(self):
         return f"Edge(id={self.id}, start=({self.start.id}), end=({self.end.id}), length={self.length:.1f} m, type={self.type}, oneway={self.oneway})"
-    
+
     def __hash__(self):
         return self.id
-    
+
     def __eq__(self, other):
         return isinstance(other, Edge) and self.id == other.id
+

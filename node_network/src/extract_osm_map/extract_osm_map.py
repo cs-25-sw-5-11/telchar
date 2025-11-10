@@ -22,7 +22,7 @@ def extract_roads(root: ET.Element, accepted_values: Set[str]) -> Dict[str, Road
     for way in root.findall("way"):
         is_road = False
         oneway = False
-        road_type = ''
+        road_type = ""
         for tag in way.findall("tag"):
             k = tag.attrib.get("k")
             v = tag.attrib.get("v")

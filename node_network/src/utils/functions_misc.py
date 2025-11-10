@@ -1,12 +1,17 @@
-from typing import List, Tuple
-from configs.config import LAT_MIN, LAT_MAX, LON_MIN, LON_MAX, LAT_BIN_SIZE, LON_BIN_SIZE
-from math import radians, sin, cos, sqrt, atan2
-import logging
 import json
 import logging
 from math import atan2, cos, radians, sin, sqrt
+from typing import List, Tuple
 
 import numpy as np
+from configs.config import (
+    LAT_BIN_SIZE,
+    LAT_MAX,
+    LAT_MIN,
+    LON_BIN_SIZE,
+    LON_MAX,
+    LON_MIN,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +34,7 @@ def vector_haversine(lat0, lon0, lat1, lon1) -> float:
 
 
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371 * 1000 # km to m
+    R = 6371 * 1000  # km to m
     lat1 = radians(lat1)
     lon1 = radians(lon1)
     lat2 = radians(lat2)
@@ -90,15 +95,6 @@ def get_bin_indices(lat: float, lon: float):
     Returns:
         Tuple[int, int] or None: (lat_idx, lon_idx) if within bounds, None otherwise
     """
-    from configs.config import (
-        LAT_BIN_SIZE,
-        LAT_MAX,
-        LAT_MIN,
-        LON_BIN_SIZE,
-        LON_MAX,
-        LON_MIN,
-    )
-
     if not (LAT_MIN <= lat <= LAT_MAX and LON_MIN <= lon <= LON_MAX):
         return None
 
@@ -106,13 +102,18 @@ def get_bin_indices(lat: float, lon: float):
     lon_idx = int((lon - LON_MIN) / LON_BIN_SIZE)
     return (lat_idx, lon_idx)
 
-def get_bins_near_point(lat: float, lon: float, range: int=0) -> List[Tuple[int, int]]:
+
+def get_bins_near_point(
+    lat: float, lon: float, range: int = 0
+) -> List[Tuple[int, int]]:
     idx = get_bin_indices(lat, lon)
     if idx is None:
-        raise ValueError(f"Coordinates (lat={lat}, lon={lon}) are out of bounds for the configured bins.")
+        raise ValueError(
+            f"Coordinates (lat={lat}, lon={lon}) are out of bounds for the configured bins."
+        )
     lat_idx, lon_idx = idx
 
-    if range==0:
+    if range == 0:
         # Check which corner the edge is closest to
         if lat % LAT_BIN_SIZE < LAT_BIN_SIZE / 2:
             if lon % LON_BIN_SIZE < LON_BIN_SIZE / 2:
@@ -130,7 +131,9 @@ def get_bins_near_point(lat: float, lon: float, range: int=0) -> List[Tuple[int,
                 offsets = [(0, 0), (1, 0), (0, 1), (1, 1)]
     else:
         # Not currently supported, raise error.
-        raise NotImplementedError("Range > 0 not currently supported in _get_bins_near_point.")
+        raise NotImplementedError(
+            "Range > 0 not currently supported in _get_bins_near_point."
+        )
 
     bins = []
     for d_lat, d_lon in offsets:
