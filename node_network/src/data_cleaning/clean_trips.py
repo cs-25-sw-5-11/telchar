@@ -75,9 +75,7 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
         is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id
 
         if is_new_trip:
-            if current_trip and is_valid_trip(
-                current_trip, timestamp_idx, lat_idx, lon_idx
-            ):
+            if current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
                 writer.writerows(current_trip)
             current_trip = []
         current_trip.append(new_row)
@@ -108,7 +106,8 @@ def clean_trips(input_dir: str, output_dir: str,
     relevant_trip_headers = [trip_id_header, lat_header, lon_header, timestamp_header]
     output_files = []
     for file_path in get_csv_files(input_dir):
-        output_files.append(file_path)
+        out_file = os.path.join(output_dir, os.path.basename(file_path))
+        output_files.append(out_file)
         if file_already_cleaned(file_path, output_dir):
             continue
 
@@ -117,7 +116,6 @@ def clean_trips(input_dir: str, output_dir: str,
         header = next(stream)
 
         # Write cleaned file
-        out_file = os.path.join(output_dir, os.path.basename(file_path))
         with open(out_file, "w", newline="", encoding="utf-8") as fout:
             writer = csv.writer(fout)
             writer.writerow(header)
