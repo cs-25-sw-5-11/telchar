@@ -62,9 +62,7 @@ def write_intermediate_edge_data(writeout_timer, trip_id) -> None:
     return None
 
 
-def extract_trip(
-    df: pd.DataFrame, trip_id: int
-) -> tuple[list[float], list[float], list[float]] | None:
+def extract_trip(df: pd.DataFrame, trip_id: int) -> tuple[list[float], list[float], list[float]] | None:
     try:
         group = df[df["trip_id"] == trip_id]
         lats = group["latitude"].tolist()
@@ -155,18 +153,14 @@ def process_trip_by_id(
 
 
 def main() -> None:
+    osm_file_path = os.path.join(DATA_INPUT_DIRECTORY, "map.osm")
     cleaned_nodes_file, cleaned_roads_file = extract_map(
-        DATA_INPUT_DIRECTORY, CLEANED_DATA_DIRECTORY
+        osm_file_path=osm_file_path, output_dir=CLEANED_DATA_DIRECTORY
     )
 
-    cleaned_files = clean_trips(
-        DATA_INPUT_DIRECTORY,
-        CLEANED_DATA_DIRECTORY,
-        trip_id_column=0,
-        lat_column=2,
-        lon_column=3,
-        timestamp_column=4,
-    )
+    cleaned_files = clean_trips(input_dir=DATA_INPUT_DIRECTORY,output_dir=CLEANED_DATA_DIRECTORY,
+                                trip_id_header='trip_id',lat_header='latitude',
+                                lon_header='longitude',timestamp_header='timestamp')
 
     build_graph(cleaned_nodes_file, cleaned_roads_file)
 

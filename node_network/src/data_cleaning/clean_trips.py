@@ -59,33 +59,23 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
     return selected_rows
 
 
-def process_and_write_trip_stream(
-    stream: Iterable[List[str]], writer: csv.writer, relevant_trip_columns: List[int]
-) -> None:
+def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.writer) -> None:
     trip_id_idx, lat_idx, lon_idx, timestamp_idx = 0, 1, 2, 3
 
     current_trip = []
     prev_trip_id = None
 
     for row in stream:
-        if len(row) < max(relevant_trip_columns):
-            continue
-
         new_row = row.copy()
-        try:
-            new_row[lat_idx] = f"{round(float(new_row[lat_idx]), 5)}"
-            new_row[lon_idx] = f"{round(float(new_row[lon_idx]), 5)}"
-        except ValueError:
-            pass
 
+        new_row[lat_idx] = f"{round(float(new_row[lat_idx]), 5)}"
+        new_row[lon_idx] = f"{round(float(new_row[lon_idx]), 5)}"
         trip_id = new_row[trip_id_idx]
 
         is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id
 
         if is_new_trip:
-            if current_trip and is_valid_trip(
-                current_trip, timestamp_idx, lat_idx, lon_idx
-            ):
+            if current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
                 writer.writerows(current_trip)
             current_trip = []
         current_trip.append(new_row)
@@ -109,38 +99,28 @@ def file_already_cleaned(file_path: str, output_dir: str) -> bool:
     return False
 
 
-def clean_trips(
-    input_dir: str,
-    output_dir: str,
-    trip_id_column: int,
-    lat_column: int,
-    lon_column: int,
-    timestamp_column: int,
-) -> List[str]:
+def clean_trips(input_dir: str, output_dir: str,
+                trip_id_header: str, lat_header: str, lon_header: str, timestamp_header: str
+                ) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
-    relevant_trip_columns = [
-        trip_id_column,
-        lat_column,
-        lon_column,
-        timestamp_column,
-    ]
+    relevant_trip_headers = [trip_id_header, lat_header, lon_header, timestamp_header]
     output_files = []
     for file_path in get_csv_files(input_dir):
-        output_files.append(file_path)
+        out_file = os.path.join(output_dir, os.path.basename(file_path))
+        output_files.append(out_file)
         if file_already_cleaned(file_path, output_dir):
             continue
 
         print(f"cleaning csv {file_path}")
-        stream = read_csv_stream(file_path, relevant_trip_columns)
+        stream = read_csv_stream(file_path, relevant_trip_headers)
         header = next(stream)
 
         # Write cleaned file
-        out_file = os.path.join(output_dir, os.path.basename(file_path))
         with open(out_file, "w", newline="", encoding="utf-8") as fout:
             writer = csv.writer(fout)
             writer.writerow(header)
 
-            process_and_write_trip_stream(stream, writer, relevant_trip_columns)
+            process_and_write_trip_stream(stream, writer)
 
     # return cleaned data files
 
