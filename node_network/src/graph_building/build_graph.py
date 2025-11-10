@@ -8,9 +8,9 @@ def build_graph(nodes_file: str, roads_file: str) -> Network:
     """Main function for creating a network"""
     network = Network()
 
-    with open(nodes_file, 'r', encoding='utf-8') as f:
+    with open(nodes_file, "r", encoding="utf-8") as f:
         nodes_dict = json.load(f)
-    with open(roads_file, 'r', encoding='utf-8') as f:
+    with open(roads_file, "r", encoding="utf-8") as f:
         roads_dict = json.load(f)
 
     all_nodes = set()

@@ -1,10 +1,10 @@
 # Spatial binning and coordinate constants for the node_network project
-LAT_MIN         = 45.6570
-LAT_MAX         = 45.8310
-LON_MIN         = 126.500
-LON_MAX         = 126.780
-LAT_BIN_SIZE    =   0.001
-LON_BIN_SIZE    =   0.001
+LAT_MIN = 45.6570
+LAT_MAX = 45.8310
+LON_MIN = 126.500
+LON_MAX = 126.780
+LAT_BIN_SIZE = 0.001
+LON_BIN_SIZE = 0.001
 
 # Distance conversion for coordinate system
 # Calculated for middle latitude of region: (45.6570 + 45.8310) / 2 = 45.744 deg
@@ -16,5 +16,5 @@ METERS_PER_DEGREE = 92800  # Approximate meters per degree for this region
 # Latitude: min=45.65792, max=45.830902
 # Longitude: min=126.50613, max=126.77186
 
-# Speed limit for cleaning trips
+# speed limit for cleaning trips
 SPEED_LIMIT = 150

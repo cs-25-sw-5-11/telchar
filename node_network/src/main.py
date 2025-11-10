@@ -13,14 +13,14 @@ from viterbi.viterbi import viterbi_algorithm
 logging.basicConfig(
     level=logging.WARNING,  # Set to DEBUG to see debug statements
     format="%(asctime)s %(levelname)-8s %(name)s: %(message)s",
-    datefmt="%H:%M:%S"
+    datefmt="%H:%M:%S",
 )
 
 logger = logging.getLogger(__name__)
 
 # Suppress matplotlib font manager debug messages
-logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
-logging.getLogger('PIL.PngImagePlugin').setLevel(logging.WARNING)
+logging.getLogger("matplotlib.font_manager").setLevel(logging.WARNING)
+logging.getLogger("PIL.PngImagePlugin").setLevel(logging.WARNING)
 
 COMPARE_STATES = True
 PLOT = False
@@ -40,12 +40,14 @@ def write_intermediate_edge_data(_writeout_timer, trip_id) -> None:
     start_time = datetime.now()
     # Write edge traversals data to json file.
     print(f"Writing edge traversal data before processing trip_id {trip_id}")
-    writeout_traversals_to_json(file_path='edge_traversals.json',
-                                edge_items=Edge.get_all_edges())
+    writeout_traversals_to_json(
+        file_path="edge_traversals.json", edge_items=Edge.get_all_edges()
+    )
     end_time = datetime.now()
-    time_diff = (end_time - start_time)
+    time_diff = end_time - start_time
     print(
-        f"Writeout at {start_time}, took {time_diff.seconds}.{time_diff.microseconds} seconds.")
+        f"Writeout at {start_time}, took {time_diff.seconds}.{time_diff.microseconds} seconds."
+    )
     return None
 
 def get_trip_data(df: pd.DataFrame, trip_id: int, time_reference: int) -> tuple[list[float], list[float], list[float]] | None:
@@ -61,21 +63,21 @@ def get_trip_data(df: pd.DataFrame, trip_id: int, time_reference: int) -> tuple[
     return lats, lons, times
 
 def writeout_final_result() -> None:
-    with open('vertex_data.json', 'w') as f:
-        f.write('{\n')
+    with open("vertex_data.json", "w") as f:
+        f.write("{\n")
         vertex_items = Vertex.get_all_vertices()
         for i, vertex in enumerate(vertex_items):
             connections = {
-                'outward_edges': [edge.id for edge in vertex.get_outward_edges()],
-                'backward_edges': [edge.id for edge in vertex.get_backward_edges()],
-                'outward_vertices': [v.id for v in vertex.get_outward_vertices()],
-                'backward_vertices': [v.id for v in vertex.get_backward_vertices()]
+                "outward_edges": [edge.id for edge in vertex.get_outward_edges()],
+                "backward_edges": [edge.id for edge in vertex.get_backward_edges()],
+                "outward_vertices": [v.id for v in vertex.get_outward_vertices()],
+                "backward_vertices": [v.id for v in vertex.get_backward_vertices()],
             }
             f.write(f'\t"{vertex.id}": {json.dumps(connections)}')
             if i < len(vertex_items) - 1:
-                f.write(',')
-            f.write('\n')
-        f.write('}\n')
+                f.write(",")
+            f.write("\n")
+        f.write("}\n")
 
     return None
 

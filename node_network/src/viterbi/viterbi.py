@@ -8,7 +8,7 @@ def load_observations(raw_data):
     for gps_pos in sorted(raw_data.keys(), key=int):
         gps_data = raw_data[gps_pos]
         total_observations.append(gps_data)
-        
+
     final_states = []
 
     for final_state in total_observations[-1]:
@@ -23,9 +23,7 @@ def load_observations(raw_data):
 
     total_observations.append(final_states_dict)
 
-
     return total_observations
-
 
 
 def get_states_per_time(observations):
@@ -36,29 +34,26 @@ def get_states_per_time(observations):
             states.add(src)
             for dest in obs[src]:
                 states.add(dest)
-        
+
         states_per_time.append(states)
 
     return states_per_time
-
 
 
 def run_viterbi(observations, states_per_t):
     V = [{}]
     path = {}
 
-   
     for state in states_per_t[0]:
         V[0][state] = (0.0, None)
         path[state] = [state]
 
-   
     for t in range(1, len(observations)):
         V.append({})
         next_path = {}
 
         for next_state in states_per_t[t]:
-            min_cost = float('inf')
+            min_cost = float("inf")
             best_prev_state = None
 
             for curr_state in observations[t - 1]:
@@ -80,7 +75,6 @@ def run_viterbi(observations, states_per_t):
         path = next_path
 
     return V, path
-
 
 
 def backtrace_best_path(V, path):
@@ -113,4 +107,3 @@ def viterbi_algorithm(raw_data):
             best_path, total_cost = best_path_result
 
     return best_path
-

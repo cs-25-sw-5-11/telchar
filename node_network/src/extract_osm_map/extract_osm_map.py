@@ -1,7 +1,7 @@
-import xml.etree.ElementTree as ET
 import json
 import os
-from typing import TypedDict, Optional, List, Dict, Set
+import xml.etree.ElementTree as ET
+from typing import Dict, List, Optional, Set, TypedDict
 
 
 class RoadInfo(TypedDict):
@@ -19,13 +19,13 @@ def extract_roads(root: ET.Element, accepted_values: Set[str]) -> Dict[str, Road
     # Extract roads (ways with highway tag)
     roads: Dict[str, RoadInfo] = {}
 
-    for way in root.findall('way'):
+    for way in root.findall("way"):
         is_road = False
-        oneway: Optional[bool] = None
-        road_type: Optional[str] = None
-        for tag in way.findall('tag'):
-            k = tag.attrib.get('k')
-            v = tag.attrib.get('v')
+        oneway = False
+        road_type = ''
+        for tag in way.findall("tag"):
+            k = tag.attrib.get("k")
+            v = tag.attrib.get("v")
 
             if k == "highway" and v in accepted_values:
                 is_road = True
@@ -36,44 +36,54 @@ def extract_roads(root: ET.Element, accepted_values: Set[str]) -> Dict[str, Road
 
         if is_road:
             node_refs = []
-            for nd in way.findall('nd'):
-                node_refs.append(nd.attrib['ref'])
-            roads[way.attrib['id']] = {
+            for nd in way.findall("nd"):
+                node_refs.append(nd.attrib["ref"])
+            roads[way.attrib["id"]] = {
                 "oneway": oneway,
                 "road_type": road_type,
-                "nodes": node_refs
+                "nodes": node_refs,
             }
     return roads
 
 
 def extract_nodes(root: ET.Element) -> Dict[str, NodeInfo]:
     nodes: Dict[str, NodeInfo] = {}
-    for node in root.findall('node'):
-        node_id = node.attrib['id']
+    for node in root.findall("node"):
+        node_id = node.attrib["id"]
         nodes[node_id] = {
-            'lat': float(node.attrib['lat']),
-            'lon': float(node.attrib['lon'])
+            "lat": float(node.attrib["lat"]),
+            "lon": float(node.attrib["lon"]),
         }
 
     return nodes
 
 
 def write_to_json(input, output_file) -> None:
-    with open(output_file, 'w', encoding='utf-8') as f:
+    with open(output_file, "w", encoding="utf-8") as f:
         json.dump(input, f, ensure_ascii=False, indent=2)
     return None
 
 
-def extract_map(input_dir: str, output_dir: str) -> List[str]:
+def extract_map(osm_file_path: str, output_dir: str) -> List[str]:
     # Parse OSM XML
     accepted_values = {
-        'motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'unclassified', 'residential',
-        'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link',
-        'living_street', 'service', 'road'
+        "motorway",
+        "trunk",
+        "primary",
+        "secondary",
+        "tertiary",
+        "unclassified",
+        "residential",
+        "motorway_link",
+        "trunk_link",
+        "primary_link",
+        "secondary_link",
+        "tertiary_link",
+        "living_street",
+        "service",
+        "road",
     }
-    osm_file = os.path.join(input_dir, "map.osm")
-
-    tree = ET.parse(osm_file)
+    tree = ET.parse(osm_file_path)
     root = tree.getroot()
 
     os.makedirs(output_dir, exist_ok=True)
@@ -83,8 +93,7 @@ def extract_map(input_dir: str, output_dir: str) -> List[str]:
     nodes_file = os.path.join(output_dir, nodes_output_name)
     roads_file = os.path.join(output_dir, roads_output_name)
 
-    already_extracted = os.path.exists(
-        nodes_file) and os.path.exists(roads_file)
+    already_extracted = os.path.exists(nodes_file) and os.path.exists(roads_file)
 
     if not already_extracted:
         nodes = extract_nodes(root)
@@ -94,6 +103,5 @@ def extract_map(input_dir: str, output_dir: str) -> List[str]:
         write_to_json(roads, roads_file)
     else:
         print("skipping map extraction. Map already extracted.")
-
 
     return nodes_file, roads_file
