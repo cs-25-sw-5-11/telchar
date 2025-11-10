@@ -64,7 +64,7 @@ def write_to_json(input, output_file) -> None:
     return None
 
 
-def extract_map(input_dir: str, output_dir: str) -> List[str]:
+def extract_map(osm_file_path: str, output_dir: str) -> List[str]:
     # Parse OSM XML
     accepted_values = {
         "motorway",
@@ -83,9 +83,7 @@ def extract_map(input_dir: str, output_dir: str) -> List[str]:
         "service",
         "road",
     }
-    osm_file = os.path.join(input_dir, "map.osm")
-
-    tree = ET.parse(osm_file)
+    tree = ET.parse(osm_file_path)
     root = tree.getroot()
 
     os.makedirs(output_dir, exist_ok=True)

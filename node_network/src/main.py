@@ -153,8 +153,9 @@ def process_trip_by_id(
 
 
 def main() -> None:
+    osm_file_path = os.path.join(DATA_INPUT_DIRECTORY, "map.osm")
     cleaned_nodes_file, cleaned_roads_file = extract_map(
-        input_dir=DATA_INPUT_DIRECTORY, output_dir=CLEANED_DATA_DIRECTORY
+        osm_file_path=osm_file_path, output_dir=CLEANED_DATA_DIRECTORY
     )
 
     cleaned_files = clean_trips(input_dir=DATA_INPUT_DIRECTORY,output_dir=CLEANED_DATA_DIRECTORY,
