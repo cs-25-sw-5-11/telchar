@@ -5,6 +5,7 @@ from utils.csv_io import read_csv_stream
 from typing import List, TextIO, Iterable
 import csv
 import numpy as np
+from configs.config import SPEED_LIMIT
 
 
 def check_has_repeated_timestamp(current_trip_rows, timestamp_idx) -> bool:

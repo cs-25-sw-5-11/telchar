@@ -83,14 +83,14 @@ def writeout_final_result() -> None:
     return None
 
 def main() -> None:
-    network = build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
+    network = build_graph('data/cleaned_data/osm_nodes_output.json', 'data/cleaned_data/osm_roads_output.json')
     remove_small_subnetworks(network)
     network.load_or_compute_all_pairs_distances(distances_file='all_pairs_distances.npy',
                                                 mapping_file='vertex_id_mapping.json')
 
     for trip_file in ['trips_150103.csv']:
         # Load and filter trip data
-        df = pd.read_csv(f'./cleaned_data/{trip_file}')
+        df = pd.read_csv(f'data/cleaned_data/{trip_file}')
         next_writeout = WRITEOUT_INTERVAL
         max_trip = df['trip_id'].max()
 

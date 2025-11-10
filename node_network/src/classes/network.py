@@ -152,10 +152,12 @@ class Network:
         target_idx = self._vertex_id_to_index[target_id]
         
         distance_cm = self._distance_matrix[source_idx, target_idx]
+        if distance_cm == 0:
+            print(f"HER ER DISTANCE 0 mellem {source_id} OG {target_idx}")
         # Check if distance is the "infinity" value (unreachable)
         if distance_cm == np.iinfo(np.int32).max:
             logger.debug(f"Vertex {target_id} is not reachable from Vertex {source_id}.")
-            return np.int32().max()
+            return float(np.int32().max())
             
         # Convert back from centimeters to meters
         return float(distance_cm) / 100.0
