@@ -59,9 +59,7 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
     return selected_rows
 
 
-def process_and_write_trip_stream(
-    stream: Iterable[List[str]], writer: csv.writer, relevant_trip_headers: List[str]
-) -> None:
+def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.writer) -> None:
     trip_id_idx, lat_idx, lon_idx, timestamp_idx = 0, 1, 2, 3
 
     current_trip = []
@@ -110,7 +108,7 @@ def clean_trips(input_dir: str, output_dir: str,
                 trip_id_header: str, lat_header: str, lon_header: str, timestamp_header: str
                 ) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
-    relevant_trip_headers = [ trip_id_header, lat_header, lon_header, timestamp_header]
+    relevant_trip_headers = [trip_id_header, lat_header, lon_header, timestamp_header]
     output_files = []
     for file_path in get_csv_files(input_dir):
         output_files.append(file_path)
@@ -127,7 +125,7 @@ def clean_trips(input_dir: str, output_dir: str,
             writer = csv.writer(fout)
             writer.writerow(header)
 
-            process_and_write_trip_stream(stream, writer, relevant_trip_headers)
+            process_and_write_trip_stream(stream, writer)
 
     # return cleaned data files
 
