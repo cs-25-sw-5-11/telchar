@@ -301,7 +301,7 @@ def test_integration_clean_trips_returns_already_cleaned_files_if_present():
     integration_clean_trips_cleanup()
 
     assert len(lines) == 1  # Only header should be present in the existing file.
-    assert cleaned_files == ['temp_output_dir\\temp_file.csv'] # Only the existing file should be reported as cleaned.
+    assert cleaned_files == [os.path.join('temp_output_dir', 'temp_file.csv')] # Only the existing file should be reported as cleaned.
 
 def test_integration_clean_trips_cleans_files_properly():
     integration_clean_trips_setup()
@@ -332,4 +332,4 @@ def test_integration_clean_trips_cleans_files_properly():
         "4,50.70001,131.50001,60\n",
         "4,50.70002,131.50002,120\n"
     ]
-    assert cleaned_files == ['temp_output_dir\\temp_file.csv']
+    assert cleaned_files == [os.path.join('temp_output_dir', 'temp_file.csv')]
