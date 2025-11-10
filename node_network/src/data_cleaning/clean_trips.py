@@ -60,7 +60,7 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
 
 
 def process_and_write_trip_stream(
-    stream: Iterable[List[str]], writer: csv.writer, relevant_trip_columns: List[int]
+    stream: Iterable[List[str]], writer: csv.writer, relevant_trip_headers: List[str]
 ) -> None:
     trip_id_idx, lat_idx, lon_idx, timestamp_idx = 0, 1, 2, 3
 
@@ -68,7 +68,7 @@ def process_and_write_trip_stream(
     prev_trip_id = None
 
     for row in stream:
-        if len(row) < max(relevant_trip_columns):
+        if len(row) < max(relevant_trip_headers):
             continue
 
         new_row = row.copy()
@@ -109,21 +109,11 @@ def file_already_cleaned(file_path: str, output_dir: str) -> bool:
     return False
 
 
-def clean_trips(
-    input_dir: str,
-    output_dir: str,
-    trip_id_column: int,
-    lat_column: int,
-    lon_column: int,
-    timestamp_column: int,
-) -> List[str]:
+def clean_trips(input_dir: str, output_dir: str,
+                trip_id_header: str, lat_header: str, lon_header: str, timestamp_header: str
+                ) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
-    relevant_trip_columns = [
-        trip_id_column,
-        lat_column,
-        lon_column,
-        timestamp_column,
-    ]
+    relevant_trip_headers = [ trip_id_header, lat_header, lon_header, timestamp_header]
     output_files = []
     for file_path in get_csv_files(input_dir):
         output_files.append(file_path)
@@ -131,7 +121,7 @@ def clean_trips(
             continue
 
         print(f"cleaning csv {file_path}")
-        stream = read_csv_stream(file_path, relevant_trip_columns)
+        stream = read_csv_stream(file_path, relevant_trip_headers)
         header = next(stream)
 
         # Write cleaned file
@@ -140,7 +130,7 @@ def clean_trips(
             writer = csv.writer(fout)
             writer.writerow(header)
 
-            process_and_write_trip_stream(stream, writer, relevant_trip_columns)
+            process_and_write_trip_stream(stream, writer, relevant_trip_headers)
 
     # return cleaned data files
 
