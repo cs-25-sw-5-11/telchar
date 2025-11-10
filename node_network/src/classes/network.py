@@ -5,6 +5,7 @@ import copy
 import json
 import os
 import numpy as np
+from pandas.io.common import file_exists
 from . import Edge, Vertex
 import heapq
 from tqdm import tqdm
@@ -30,6 +31,9 @@ class Network:
         self._distance_matrix: Optional[np.ndarray] = None
         self._vertex_id_to_index: Dict[int, int] = {}
         self._index_to_vertex_id: Dict[int, int] = {}
+
+        self._memo: Dict[str, float] = {}
+        self._memo["abc"] = 0
 
     def mark_missing_edge_traversals(self, max_time_index: int):
         """Mark edges that were not traversed in for any time index with -1 speed."""
@@ -83,7 +87,7 @@ class Network:
         
         # Create vertex ID to matrix index mapping
         self._create_vertex_index_mapping(vertices)
-        
+
         # Initialize distance matrix with a large value representing infinity for int32
         # int32 max value is far larger than any realistic distance in a network, so
         # it's used to cut down on memory usage.
@@ -142,6 +146,12 @@ class Network:
         """Get precomputed distance between two vertices."""
         source_id = source.id
         target_id = target.id
+        hash = f'{source_id}-{target_id}'
+        if hash in self._memo:
+            self._memo["abc"] = self._memo.get("abc")+1
+            if self._memo.get("abc") % 1000000 == 0:
+                print(self._memo.get("abc"))
+            return self._memo.get(hash)
         if not self._distances_computed:
             raise RuntimeError("Distances not available. Call load_or_compute_all_pairs_distances() first.")
         
@@ -155,10 +165,14 @@ class Network:
         # Check if distance is the "infinity" value (unreachable)
         if distance_cm == np.iinfo(np.int32).max:
             logger.debug(f"Vertex {target_id} is not reachable from Vertex {source_id}.")
-            return np.int32().max()
+            return float(np.iinfo(np.int32).max)
             
         # Convert back from centimeters to meters
-        return float(distance_cm) / 100.0
+        result = float(distance_cm) / 100.0
+        # if(result == 0.0):
+        #     print(f"HER: source: {source_idx}, target: {target_idx}, dist cm: {distance_cm}")
+        self._memo[hash] = result
+        return result
     
     def get_all_distances_from(self, source_id: int) -> dict[int, float]:
         """Get all distances from a source vertex."""

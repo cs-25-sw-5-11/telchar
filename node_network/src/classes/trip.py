@@ -31,6 +31,7 @@ class Trip:
         for i in range(len(best_path)-1):
             dist, edges = self.find_shortest_edge_path(start_item_id = best_path[i], end_item_id = best_path[i+1])
             speed = dist / (times[i+1] - times[i])  # m/s
+            print(speed*3.6)
             time_index = get_time_index(timestamp=times[i], reference=0, interval=time_interval)
             self.apply_speed_to_edges(edges, time_index, speed)
 

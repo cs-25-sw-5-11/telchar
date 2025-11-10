@@ -28,7 +28,7 @@ def vector_haversine(lat0, lon0, lat1, lon1) -> float:
 
 
 def haversine(lat1, lon1, lat2, lon2):
-    R = 6371
+    R = 6371 * 1000 # km to m
     lat1 = radians(lat1)
     lon1 = radians(lon1)
     lat2 = radians(lat2)

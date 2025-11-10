@@ -1,17 +1,14 @@
-from classes import Network, Edge, Vertex, Trip
+import json
+import logging
+from datetime import datetime
+
+import pandas as pd
+from classes import Edge, Trip, Vertex
 from graph_building.build_graph import build_graph
 from graph_building.filter_out_subnetworks import remove_small_subnetworks
-from extract_osm_map.extract_osm_map import extract_map
-from data_cleaning.clean_trips import clean_trips
+from tqdm import tqdm
 from utils.functions_misc import writeout_traversals_to_json
 from viterbi.viterbi import viterbi_algorithm
-
-import logging
-import pandas as pd
-import json
-import os
-from tqdm import tqdm
-from datetime import datetime
 
 logging.basicConfig(
     level=logging.WARNING,  # Set to DEBUG to see debug statements
@@ -38,7 +35,7 @@ DATA_INPUT_DIRECTORY = "data/input_data"
 CLEANED_DATA_DIRECTORY = "data/cleaned_data"
 
 
-def write_intermediate_edge_data(writeout_timer, trip_id) -> None:
+def write_intermediate_edge_data(_writeout_timer, trip_id) -> None:
     # Time readout.
     start_time = datetime.now()
     # Write edge traversals data to json file.
@@ -83,18 +80,17 @@ def writeout_final_result() -> None:
     return None
 
 def main() -> None:
-    network = build_graph('./cleaned_data/osm_nodes_output.json', './cleaned_data/osm_roads_output.json')
+    network = build_graph(CLEANED_DATA_DIRECTORY + '/osm_nodes_output.json', CLEANED_DATA_DIRECTORY + '/osm_roads_output.json')
     remove_small_subnetworks(network)
     network.load_or_compute_all_pairs_distances(distances_file='all_pairs_distances.npy',
                                                 mapping_file='vertex_id_mapping.json')
 
     for trip_file in ['trips_150103.csv']:
         # Load and filter trip data
-        df = pd.read_csv(f'./cleaned_data/{trip_file}')
-        next_writeout = WRITEOUT_INTERVAL
+        df = pd.read_csv(f'{CLEANED_DATA_DIRECTORY}/{trip_file}')
         max_trip = df['trip_id'].max()
 
-        for trip_id in tqdm(range(100), desc=f"Processing trips in {trip_file}"):
+        for trip_id in tqdm(range(6,7), desc=f"Processing trips in {trip_file}"):
             lats, lons, times = get_trip_data(df=df, trip_id=trip_id, time_reference=UNIX_REFERENCE)
 
             trip = Trip(network, trip_id, lats, lons, times)
@@ -121,10 +117,9 @@ def main() -> None:
             csv_writer.writerow(row)
 
     return
-    # Write vertex connections to json file
-    writeout_final_result()
-    return None
 
+    # Todo: Fix JSON output
+    # writeout_final_result()
 
 if __name__ == "__main__":
     main()
