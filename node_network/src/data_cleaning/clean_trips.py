@@ -67,12 +67,9 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
 
     for row in stream:
         new_row = row.copy()
-        try:
-            new_row[lat_idx] = f"{round(float(new_row[lat_idx]), 5)}"
-            new_row[lon_idx] = f"{round(float(new_row[lon_idx]), 5)}"
-        except ValueError:
-            pass
 
+        new_row[lat_idx] = f"{round(float(new_row[lat_idx]), 5)}"
+        new_row[lon_idx] = f"{round(float(new_row[lon_idx]), 5)}"
         trip_id = new_row[trip_id_idx]
 
         is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id

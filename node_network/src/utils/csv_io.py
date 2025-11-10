@@ -30,6 +30,14 @@ def read_csv_stream(file_path: str, headers: List[str]) -> Generator[List[str], 
             # Must have non-empty values for all selected columns
             if any((row[i].strip() == "") for i in columns):
                 raise ValueError("Row has empty value(s) in required columns.")
+            
+            values = [row[i] for i in columns]
+            # Check that values are or can be converted to float
+            for value in values:
+                try:
+                    float(value)
+                except ValueError as e:
+                    raise ValueError(f"Value '{value}' cannot be converted to float.") from e
 
-            yield [row[i] for i in columns]
+            yield values
 
