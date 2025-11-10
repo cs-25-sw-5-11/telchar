@@ -1,6 +1,5 @@
 from data_cleaning.clean_trips import   check_has_repeated_timestamp, check_has_high_speed, \
-                                        is_valid_trip, process_and_write_trip_stream, \
-                                        get_csv_files, file_already_cleaned, clean_trips
+                                        is_valid_trip, get_csv_files, file_already_cleaned, clean_trips
 from utils.csv_io import read_csv_stream
 import os
 import pytest

@@ -159,8 +159,8 @@ def main() -> None:
     )
 
     cleaned_files = clean_trips(input_dir=DATA_INPUT_DIRECTORY,output_dir=CLEANED_DATA_DIRECTORY,
-                                trip_id_header='trip_id',lat_header='lat',
-                                lon_header='lon',timestamp_header='timestamp')
+                                trip_id_header='trip_id',lat_header='latitude',
+                                lon_header='longitude',timestamp_header='timestamp')
 
     build_graph(cleaned_nodes_file, cleaned_roads_file)
 
