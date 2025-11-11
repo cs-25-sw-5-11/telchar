@@ -1,14 +1,17 @@
 import json
 import logging
+import os
 from datetime import datetime
 
 import pandas as pd
 from classes import Edge, Trip, Vertex
+from data_cleaning.clean_trips import clean_trips
 from graph_building.build_graph import build_graph
 from graph_building.filter_out_subnetworks import remove_small_subnetworks
 from tqdm import tqdm
 from utils.functions_misc import writeout_traversals_to_json
 from viterbi.viterbi import viterbi_algorithm
+from extract_osm_map.extract_osm_map import extract_map
 
 logging.basicConfig(
     level=logging.WARNING,  # Set to DEBUG to see debug statements
@@ -87,18 +90,34 @@ def writeout_final_result() -> None:
 
 
 def main() -> None:
-    network = build_graph(
-        CLEANED_DATA_DIRECTORY + "/osm_nodes_output.json",
-        CLEANED_DATA_DIRECTORY + "/osm_roads_output.json",
+    osm_file_path = os.path.join(DATA_INPUT_DIRECTORY, "map.osm")
+
+    cleaned_nodes_file, cleaned_roads_file = extract_map(
+        osm_file_path=osm_file_path, output_dir=CLEANED_DATA_DIRECTORY
     )
+
+    cleaned_files = clean_trips(
+        input_dir=DATA_INPUT_DIRECTORY,
+        output_dir=CLEANED_DATA_DIRECTORY,
+        trip_id_header="trip_id",
+        lat_header="latitude",
+        lon_header="longitude",
+        timestamp_header="timestamp",
+    )
+
+    network = build_graph(
+        cleaned_nodes_file,
+        cleaned_roads_file,
+    )
+
     remove_small_subnetworks(network)
     network.load_or_compute_all_pairs_distances(
         distances_file="all_pairs_distances.npy", mapping_file="vertex_id_mapping.json"
     )
 
-    for trip_file in ["trips_150103.csv"]:
+    for trip_file in cleaned_files:
         # Load and filter trip data
-        df = pd.read_csv(f"{CLEANED_DATA_DIRECTORY}/{trip_file}")
+        df = pd.read_csv(trip_file)
         max_trip = df["trip_id"].max()
 
         for trip_id in tqdm(range(max_trip), desc=f"Processing trips in {trip_file}"):
