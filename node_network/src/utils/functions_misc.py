@@ -67,8 +67,9 @@ def writeout_traversals_to_json(file_path: str, edge_items):
         for i, edge in enumerate(edge_items):
             # Convert to integers at output time for space efficiency, sorted by time_idx
             # Convert variance to standard deviation for interpretability
+            # Note: variance is stored scaled down by 100, so we unscale before taking sqrt
             traversals_data_int = {
-                time_idx: (int(mean), int(sqrt(variance)), int(total_length))
+                time_idx: (int(mean), int(sqrt(variance * 100)), int(total_length))
                 for time_idx, (mean, variance, total_length) in sorted(
                     edge.traversals_data.items()
                 )

@@ -169,25 +169,39 @@ class Edge:
 
     def traversals_data_update(self, time_index: int, speed: float) -> None:
         """Update traversal statistics for this edge, using cm/s to reduce memory usage."""
-        # If speed is infinity, ignore. Something went wrong.
-        if speed == float("inf"):
+        # If speed is infinity or NaN, ignore. Something went wrong.
+        if speed == float("inf") or speed != speed:  # NaN check
             return
 
-        speed = int(speed * 100)  # Convert m/s to cm/s
+        # Clamp extreme speeds to reasonable bounds (0-200 m/s = 0-720 km/h)
+        speed = max(0.0, min(200.0, speed))
+
+        # Convert m/s to cm/s but keep as float for accurate calculations
+        speed_cms = speed * 100
 
         if time_index in self.traversals_data:
-            existing_mean, existing_variance, total_traversals = self.traversals_data[
+            existing_mean, existing_scaled_variance, total_traversals = self.traversals_data[
                 time_index
             ]
 
-            total_weight = total_traversals + 1
-            new_mean = existing_mean + 1 * (speed - existing_mean) / total_weight
+            # Use float calculations for accuracy
+            existing_mean_float = float(existing_mean)
+            existing_variance = float(existing_scaled_variance)
 
-            delta1 = speed - existing_mean
-            delta2 = speed - new_mean
-            new_variance = (
-                existing_variance * total_traversals + 1 * delta1 * delta2
-            ) / total_weight
+            total_weight = total_traversals + 1
+            # Use Welford's online algorithm for numerical stability
+            delta = speed_cms - existing_mean_float
+            new_mean = existing_mean_float + delta / total_weight
+
+            # Update variance using Welford's method
+            delta2 = speed_cms - new_mean
+            # M2 is the sum of squared deviations from the mean
+            M2 = existing_variance * total_traversals + delta * delta2
+            new_variance = M2 / total_weight
+
+            # Clamp variance to prevent explosion (variance shouldn't exceed reasonable bounds)
+            # For speeds in cm/s, variance of 10000 means std dev of 100 cm/s = 1 m/s which is reasonable
+            new_variance = min(new_variance, 100000.0)  # Cap at variance of 100000 (std dev 316 cm/s = 3.16 m/s)
 
             self.traversals_data[time_index] = (
                 int(new_mean),
@@ -195,7 +209,7 @@ class Edge:
                 total_weight,
             )
         else:
-            self.traversals_data[time_index] = (speed, 0.0, 1)
+            self.traversals_data[time_index] = (int(speed_cms), 0, 1)
 
     def project_coordinates_onto_edge(
         self, lat: float, lon: float
