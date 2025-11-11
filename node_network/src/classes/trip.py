@@ -52,18 +52,48 @@ class Trip:
             # Calculate time difference
             time_diff = times[i + 1] - times[i]
 
-            # Skip if time difference is too small (less than 1 second) or negative
-            # This prevents speed explosions from GPS errors or duplicate timestamps
-            if time_diff < 1.0:
+            # Skip if time difference is too small (less than 3 seconds) or negative
+            # Increased from 1.0s to 3.0s to prevent speed explosions from GPS errors
+            if time_diff < 3.0:
                 logger.debug(f"Skipping segment with time_diff={time_diff:.2f}s (too small)")
                 continue
 
             # Calculate speed in m/s
             speed = dist / time_diff
 
-            # Skip if speed is unreasonable (> 200 m/s = 720 km/h)
-            # This will be handled by the Edge class, but we can skip early
-            if speed > 200.0:
+            # Get the GPS coordinates for straight-line distance comparison
+            start_item = None
+            end_item = None
+            if best_path[i] <= self.get_id_max():
+                start_item = self.get_point_projection_by_id(best_path[i])
+            else:
+                start_item = self.network.get_vertex_by_id(best_path[i])
+
+            if best_path[i + 1] <= self.get_id_max():
+                end_item = self.get_point_projection_by_id(best_path[i + 1])
+            else:
+                end_item = self.network.get_vertex_by_id(best_path[i + 1])
+
+            # Calculate straight-line distance between GPS points
+            straight_line_dist = haversine(
+                start_item.lat, start_item.lon, end_item.lat, end_item.lon
+            )
+
+            # Skip if network distance is much larger than straight-line distance
+            # This indicates bad map-matching (projections on disconnected road segments)
+            # Allow up to 3x detour ratio for normal road networks
+            if dist > 0 and straight_line_dist > 0:
+                detour_ratio = dist / straight_line_dist
+                if detour_ratio > 3.0:
+                    logger.debug(
+                        f"Skipping segment with detour_ratio={detour_ratio:.2f} "
+                        f"(network_dist={dist:.2f}m, straight_line={straight_line_dist:.2f}m)"
+                    )
+                    continue
+
+            # Skip if speed is unreasonable (> 41.67 m/s = 150 km/h)
+            # This threshold is appropriate for urban/highway mixed traffic in China
+            if speed > 41.67:
                 logger.debug(f"Skipping segment with speed={speed:.2f} m/s (too high)")
                 continue
 

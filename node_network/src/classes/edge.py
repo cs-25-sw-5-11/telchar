@@ -201,7 +201,8 @@ class Edge:
 
             # Clamp variance to prevent explosion (variance shouldn't exceed reasonable bounds)
             # For speeds in cm/s, variance of 10000 means std dev of 100 cm/s = 1 m/s which is reasonable
-            new_variance = min(new_variance, 100000.0)  # Cap at variance of 100000 (std dev 316 cm/s = 3.16 m/s)
+            # Cap at variance of 40000 (std dev 200 cm/s = 2 m/s = 7.2 km/h variation)
+            new_variance = min(new_variance, 40000.0)
 
             self.traversals_data[time_index] = (
                 int(new_mean),

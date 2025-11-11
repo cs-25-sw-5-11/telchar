@@ -120,7 +120,7 @@ def main() -> None:
         df = pd.read_csv(trip_file)
         max_trip = df["trip_id"].max()
 
-        for trip_id in tqdm(range(max_trip), desc=f"Processing trips in {trip_file}"):
+        for trip_id in tqdm(range(86,87), desc=f"Processing trips in {trip_file}"):
             lats, lons, times = get_trip_data(
                 df=df, trip_id=trip_id, time_reference=UNIX_REFERENCE
             )
@@ -132,6 +132,36 @@ def main() -> None:
 
     total_time_intervals = int(24 * 60 * 60 / TIME_INTERVAL)
     network.mark_missing_edge_traversals(max_time_index=total_time_intervals)
+
+    # Debug: Check variance statistics
+    variances = []
+    high_variance_details = []
+    for edge in network.get_all_edges():
+        for time_idx in range(total_time_intervals):
+            mean, variance, count = edge.traversals_data[time_idx]
+            if count > 0:  # Only actual measurements
+                variances.append(variance)
+                if variance > 10000:
+                    mean_kmh = (mean / 100.0) * 3.6
+                    std_dev_kmh = ((variance ** 0.5) / 100.0) * 3.6
+                    high_variance_details.append((edge.id, mean_kmh, std_dev_kmh, variance, count))
+
+    if variances:
+        variances.sort()
+        print(f"\n=== Variance Statistics ===")
+        print(f"Total measurements: {len(variances)}")
+        print(f"Min variance: {min(variances)}")
+        print(f"Max variance: {max(variances)}")
+        print(f"Median variance: {variances[len(variances)//2]}")
+        print(f"Variances > 10000: {sum(1 for v in variances if v > 10000)}")
+        print(f"Variances > 5000: {sum(1 for v in variances if v > 5000)}")
+        print(f"Variances > 1000: {sum(1 for v in variances if v > 1000)}")
+
+        if high_variance_details:
+            print(f"\nHigh variance edges (variance > 10000):")
+            for edge_id, mean_kmh, std_dev_kmh, var, cnt in high_variance_details[:5]:
+                print(f"  Edge {edge_id}: mean={mean_kmh:.1f} km/h, std_dev={std_dev_kmh:.1f} km/h, variance={var}, count={cnt}")
+        print("===========================\n")
 
     import csv
 
