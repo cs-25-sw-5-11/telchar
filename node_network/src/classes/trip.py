@@ -48,7 +48,25 @@ class Trip:
             dist, edges = self.find_shortest_edge_path(
                 start_item_id=best_path[i], end_item_id=best_path[i + 1]
             )
-            speed = dist / (times[i + 1] - times[i])  # m/s
+
+            # Calculate time difference
+            time_diff = times[i + 1] - times[i]
+
+            # Skip if time difference is too small (less than 1 second) or negative
+            # This prevents speed explosions from GPS errors or duplicate timestamps
+            if time_diff < 1.0:
+                logger.debug(f"Skipping segment with time_diff={time_diff:.2f}s (too small)")
+                continue
+
+            # Calculate speed in m/s
+            speed = dist / time_diff
+
+            # Skip if speed is unreasonable (> 200 m/s = 720 km/h)
+            # This will be handled by the Edge class, but we can skip early
+            if speed > 200.0:
+                logger.debug(f"Skipping segment with speed={speed:.2f} m/s (too high)")
+                continue
+
             time_index = get_time_index(
                 timestamp=times[i], reference=0, interval=time_interval
             )
