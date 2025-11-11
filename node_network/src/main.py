@@ -4,22 +4,14 @@ import os
 from datetime import datetime
 
 import pandas as pd
-from classes.classes import Edge, Vertex
+from classes import Edge, Trip, Vertex
 from data_cleaning.clean_trips import clean_trips
-from extract_osm_map.extract_osm_map import extract_map
 from graph_building.build_graph import build_graph
-from graph_building.find_network import find_network
-from graph_mapping.functions_mapping import find_shortest_edge_path, process_trip
-from plotting.functions_plotting import plot_directed_graph
+from graph_building.filter_out_subnetworks import remove_small_subnetworks
 from tqdm import tqdm
-from utils.functions_misc import (
-    capture_network_state,
-    compare_network_states,
-    get_time_index,
-    restore_network_to_original_state,
-    writeout_traversals_to_json,
-)
+from utils.functions_misc import writeout_traversals_to_json
 from viterbi.viterbi import viterbi_algorithm
+from extract_osm_map.extract_osm_map import extract_map
 
 logging.basicConfig(
     level=logging.WARNING,  # Set to DEBUG to see debug statements
@@ -46,7 +38,7 @@ DATA_INPUT_DIRECTORY = "data/input_data"
 CLEANED_DATA_DIRECTORY = "data/cleaned_data"
 
 
-def write_intermediate_edge_data(writeout_timer, trip_id) -> None:
+def write_intermediate_edge_data(_writeout_timer, trip_id) -> None:
     # Time readout.
     start_time = datetime.now()
     # Write edge traversals data to json file.
@@ -62,44 +54,19 @@ def write_intermediate_edge_data(writeout_timer, trip_id) -> None:
     return None
 
 
-def extract_trip(df: pd.DataFrame, trip_id: int) -> tuple[list[float], list[float], list[float]] | None:
+def get_trip_data(
+    df: pd.DataFrame, trip_id: int, time_reference: int
+) -> tuple[list[float], list[float], list[float]] | None:
     try:
         group = df[df["trip_id"] == trip_id]
         lats = group["latitude"].tolist()
         lons = group["longitude"].tolist()
-        times = (group["timestamp"] - UNIX_REFERENCE).tolist()
-
+        times = (group["timestamp"] - time_reference).tolist()
     except Exception as e:
         logger.warning(f"Skipping trip_id {trip_id} due to error: {e}")
         return None
 
     return lats, lons, times
-
-
-def get_edges_in_path(
-    best_path: list[int], time_interval: int, times: list[float]
-) -> list[Edge]:
-    edges_in_path = []
-    for i in range(len(best_path) - 1):
-        start_vertex = Vertex.get_vertex_by_id(best_path[i])
-        end_vertex = Vertex.get_vertex_by_id(best_path[i + 1])
-        dist, path_edges = find_shortest_edge_path(start_vertex, end_vertex)
-
-        # 0 as reference, as times has already been adjusted for the reference value.
-        time_index = get_time_index(
-            timestamp=times[i], reference=0, interval=time_interval
-        )
-        time_diff = times[i + 1] - times[i]
-        speed = int(dist / time_diff * 100)  # Convert m/s to cm/s
-
-        for edge in path_edges:
-            edge_length = int(edge.length * 100)  # Convert m to cm
-            # Converting to cm and using int to save space.
-            edge.parent_edge.traversals_data_update(time_index, speed, edge_length)
-
-        edges_in_path.extend(path_edges)
-
-    return edges_in_path
 
 
 def writeout_final_result() -> None:
@@ -122,109 +89,69 @@ def writeout_final_result() -> None:
     return None
 
 
-def process_trip_by_id(
-    trip_id: int, df: pd.DataFrame
-) -> tuple[list[Edge], list[tuple[float, float]], list[float], list[float]] | None:
-    result = extract_trip(df, trip_id)
-    if result is None:
-        return None
-    lats, lons, times = result
-
-    data_output_dict = process_trip(lats, lons, max_dist=MAX_DIST)
-
-    if data_output_dict is None:
-        logger.debug(f"Skipping trip_id {trip_id} due to no projected vertices.")
-        return None
-
-    try:
-        best_path = viterbi_algorithm(data_output_dict)
-    except Exception:
-        return None
-
-    edges_in_path = get_edges_in_path(best_path, TIME_INTERVAL, times)
-
-    best_path_vertex_coords = [
-        (Vertex.get_vertex_by_id(vertex_id).lat, Vertex.get_vertex_by_id(vertex_id).lon)
-        for vertex_id in best_path
-    ]
-    for edge in edges_in_path:
-        edge.parent_edge.highlighted = True
-    return edges_in_path, best_path_vertex_coords, lats, lons
-
-
 def main() -> None:
     osm_file_path = os.path.join(DATA_INPUT_DIRECTORY, "map.osm")
+
     cleaned_nodes_file, cleaned_roads_file = extract_map(
         osm_file_path=osm_file_path, output_dir=CLEANED_DATA_DIRECTORY
     )
 
-    cleaned_files = clean_trips(input_dir=DATA_INPUT_DIRECTORY,output_dir=CLEANED_DATA_DIRECTORY,
-                                trip_id_header='trip_id',lat_header='latitude',
-                                lon_header='longitude',timestamp_header='timestamp')
-
-    build_graph(cleaned_nodes_file, cleaned_roads_file)
-
-    _ = find_network()
-
-    if COMPARE_STATES:
-        # Capture original state for later comparison
-        original_state = capture_network_state()
-
-    for trip_file in cleaned_files:
-        trip_file = os.path.basename(trip_file)
-        # Load and filter trip data
-        df = pd.read_csv(f"data/cleaned_data/{trip_file}")
-        next_writeout = WRITEOUT_INTERVAL
-        max_trip = df["trip_id"].max()
-
-        lats = None
-        lons = None
-        best_path_vertex_coords = None
-
-        # TODO change to full length of cleaned file instead of trip 3-8
-        for trip_id in tqdm(range(max_trip), desc=f"Processing trips in {trip_file}"):
-            # Reset network state before processing each trip.
-            # Here instead of at the end due to possible early continues.
-            restore_network_to_original_state()
-
-            # Writeout intermediate results periodically.
-            # Needs to be right after restoration to avoid getting temporary edges.
-            if trip_id >= next_writeout:
-                write_intermediate_edge_data(next_writeout, trip_id)
-                next_writeout += WRITEOUT_INTERVAL
-
-            result = process_trip_by_id(trip_id, df)
-            if result is None:
-                continue
-            edges_in_path, best_path_vertex_coords, lats, lons = result
-
-    # Final cleanup.
-    restore_network_to_original_state()
-    print("Final writeout of edge traversal data...")
-    writeout_traversals_to_json(
-        file_path="edge_traversals.json", edge_items=Edge.get_all_edges()
+    cleaned_files = clean_trips(
+        input_dir=DATA_INPUT_DIRECTORY,
+        output_dir=CLEANED_DATA_DIRECTORY,
+        trip_id_header="trip_id",
+        lat_header="latitude",
+        lon_header="longitude",
+        timestamp_header="timestamp",
     )
 
-    if PLOT:
-        plot_directed_graph(
-            lat_min=45.62,
-            lat_max=45.77,
-            lon_min=126.65,
-            lon_max=126.75,
-            trip_point_lats=lats,
-            trip_point_lons=lons,
-            max_dist=MAX_DIST,
-            best_path_vertex_coords=best_path_vertex_coords,
-        )
+    network = build_graph(
+        cleaned_nodes_file,
+        cleaned_roads_file,
+    )
 
-    if COMPARE_STATES:
-        # Validate integrity after restoration
-        restored_state = capture_network_state()
-        compare_network_states(original_state, restored_state)
+    remove_small_subnetworks(network)
+    network.load_or_compute_all_pairs_distances(
+        distances_file="all_pairs_distances.npy", mapping_file="vertex_id_mapping.json"
+    )
 
-    # Write vertex connections to json file
-    writeout_final_result()
-    return None
+    for trip_file in cleaned_files:
+        # Load and filter trip data
+        df = pd.read_csv(trip_file)
+        max_trip = df["trip_id"].max()
+
+        for trip_id in tqdm(range(max_trip), desc=f"Processing trips in {trip_file}"):
+            lats, lons, times = get_trip_data(
+                df=df, trip_id=trip_id, time_reference=UNIX_REFERENCE
+            )
+
+            trip = Trip(network, trip_id, lats, lons, times)
+            trip_layer_distances = trip.compute_layer_distances(max_dist=MAX_DIST)
+            best_path = viterbi_algorithm(trip_layer_distances)
+            trip.process_and_apply_best_path(best_path, times, TIME_INTERVAL)
+
+    total_time_intervals = int(24 * 60 * 60 / TIME_INTERVAL)
+    network.mark_missing_edge_traversals(max_time_index=total_time_intervals)
+
+    import csv
+
+    with open("temp_result.csv", "w", newline="") as csvfile:
+        csv_writer = csv.writer(csvfile)
+        fieldnames = ["edge_id"]
+        for i in range(total_time_intervals):
+            fieldnames.append(f"time_idx_{i}")
+        csv_writer.writerow(fieldnames)
+        for edge in network.get_all_edges():
+            row = [edge.id]
+            for time_idx in range(total_time_intervals):
+                mean, variance, total_length = edge.traversals_data[time_idx]
+                row.append(mean)
+            csv_writer.writerow(row)
+
+    return
+
+    # Todo: Fix JSON output
+    # writeout_final_result()
 
 
 if __name__ == "__main__":

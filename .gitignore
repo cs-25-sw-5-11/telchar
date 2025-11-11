@@ -1,5 +1,4 @@
 *.pyc
-node_network/data
-
-
+*.npy
+*.csv
 node_network/*.json

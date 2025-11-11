@@ -59,7 +59,9 @@ def select_relevant_columns(rows: List[List[str]], cols: List[int]) -> List[List
     return selected_rows
 
 
-def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.writer) -> None:
+def process_and_write_trip_stream(
+    stream: Iterable[List[str]], writer: csv.writer
+) -> None:
     trip_id_idx, lat_idx, lon_idx, timestamp_idx = 0, 1, 2, 3
 
     current_trip = []
@@ -75,7 +77,9 @@ def process_and_write_trip_stream(stream: Iterable[List[str]], writer: csv.write
         is_new_trip = prev_trip_id is not None and trip_id != prev_trip_id
 
         if is_new_trip:
-            if current_trip and is_valid_trip(current_trip, timestamp_idx, lat_idx, lon_idx):
+            if current_trip and is_valid_trip(
+                current_trip, timestamp_idx, lat_idx, lon_idx
+            ):
                 writer.writerows(current_trip)
             current_trip = []
         current_trip.append(new_row)
@@ -99,9 +103,14 @@ def file_already_cleaned(file_path: str, output_dir: str) -> bool:
     return False
 
 
-def clean_trips(input_dir: str, output_dir: str,
-                trip_id_header: str, lat_header: str, lon_header: str, timestamp_header: str
-                ) -> List[str]:
+def clean_trips(
+    input_dir: str,
+    output_dir: str,
+    trip_id_header: str,
+    lat_header: str,
+    lon_header: str,
+    timestamp_header: str,
+) -> List[str]:
     os.makedirs(output_dir, exist_ok=True)
     relevant_trip_headers = [trip_id_header, lat_header, lon_header, timestamp_header]
     output_files = []

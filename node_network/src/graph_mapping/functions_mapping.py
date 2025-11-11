@@ -1,13 +1,8 @@
 import heapq
 import logging
 
-from classes.classes import Edge, Vertex
-from configs.config import (
-    LAT_BIN_SIZE,
-    LAT_MIN,
-    LON_BIN_SIZE,
-    LON_MIN,
-)
+from classes import Edge, Network, Vertex
+from configs.config import LAT_BIN_SIZE, LAT_MIN, LON_BIN_SIZE, LON_MIN
 from utils.functions_misc import get_bin_indices
 
 logger = logging.getLogger(__name__)
@@ -231,7 +226,12 @@ def project_single_trip_point(lat, lon, cell_range, max_dist):
 
 
 def project_trip_coordinates_onto_edges(
-    lats, lons, cell_range=0, max_dist=float("inf"), debug: bool = False
+    network: Network,
+    lats,
+    lons,
+    cell_range=0,
+    max_dist=float("inf"),
+    debug: bool = False,
 ):
     # Process each trip point sequentially
     results = []  # List of lists of vertices
@@ -405,13 +405,12 @@ def generate_network_distances_dict(vertex_layers):
     return data_output_dict
 
 
-def process_trip(lats, lons, cell_range=0, max_dist=50):
+def process_trip(network: Network, lats, lons, cell_range=0, max_dist=50):
     vertex_layers = project_trip_coordinates_onto_edges(
-        lats, lons, cell_range=cell_range, max_dist=max_dist
+        network, lats, lons, cell_range=cell_range, max_dist=max_dist
     )
     if vertex_layers is None:
         return None
     data_output_dict = generate_network_distances_dict(vertex_layers)
 
     return data_output_dict
-

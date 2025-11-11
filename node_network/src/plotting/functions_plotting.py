@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from classes.classes import Edge, Vertex
+from classes import Edge, Vertex
 from configs.config import (
     LAT_BIN_SIZE,
     LAT_MAX,
