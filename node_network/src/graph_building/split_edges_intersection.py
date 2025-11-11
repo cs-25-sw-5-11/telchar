@@ -1,4 +1,4 @@
-from classes.classes import Vertex
+from classes import Vertex
 from tqdm import tqdm
 
 
