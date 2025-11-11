@@ -12,6 +12,7 @@ from tqdm import tqdm
 from utils.functions_misc import writeout_traversals_to_json
 from viterbi.viterbi import viterbi_algorithm
 from extract_osm_map.extract_osm_map import extract_map
+from utils.new_plotting import plot_helper
 
 logging.basicConfig(
     level=logging.WARNING,  # Set to DEBUG to see debug statements
@@ -129,6 +130,9 @@ def main() -> None:
             trip_layer_distances = trip.compute_layer_distances(max_dist=MAX_DIST)
             best_path = viterbi_algorithm(trip_layer_distances)
             trip.process_and_apply_best_path(best_path, times, TIME_INTERVAL)
+
+            plot_helper(trip, network, trip_id, lats, lons, best_path)
+
 
     total_time_intervals = int(24 * 60 * 60 / TIME_INTERVAL)
     network.mark_missing_edge_traversals(max_time_index=total_time_intervals)
