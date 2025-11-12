@@ -21,22 +21,25 @@ import numpy as np
 
 def load_network_data(output_dir):
     """Load vertex, edge, and traversal time data from CSV files."""
-    print(f"Loading network data from {output_dir}...")
+    print(f"Loading network data from {output_dir}...", flush=True)
 
     # Load vertices
     vertex_path = os.path.join(output_dir, "vertex.csv")
+    print(f"  Loading {vertex_path}...", flush=True)
     vertices = pd.read_csv(vertex_path)
-    print(f"  ✓ Loaded {len(vertices)} vertices")
+    print(f"  ✓ Loaded {len(vertices)} vertices", flush=True)
 
     # Load edge connections
     edge_path = os.path.join(output_dir, "edge_connections.csv")
+    print(f"  Loading {edge_path}...", flush=True)
     edges = pd.read_csv(edge_path)
-    print(f"  ✓ Loaded {len(edges)} edges")
+    print(f"  ✓ Loaded {len(edges)} edges", flush=True)
 
     # Load edge data (traversal times by time bin)
     data_path = os.path.join(output_dir, "edge_data.csv")
+    print(f"  Loading {data_path}...", flush=True)
     edge_data = pd.read_csv(data_path)
-    print(f"  ✓ Loaded traversal data for {len(edge_data)} time bins")
+    print(f"  ✓ Loaded traversal data for {len(edge_data)} time bins", flush=True)
 
     return vertices, edges, edge_data
 
@@ -102,9 +105,12 @@ def create_edge_segments(vertices, edges):
 
 def visualize_network(output_dir):
     """Create interactive visualization with time slider."""
+    print("Starting visualization...", flush=True)
 
     # Load data
+    print("Step 1: Loading data...", flush=True)
     vertices, edges, edge_data = load_network_data(output_dir)
+    print("Step 2: Creating edge segments...", flush=True)
 
     # Create edge segments
     segments = create_edge_segments(vertices, edges)
@@ -215,9 +221,25 @@ def visualize_network(output_dir):
     print(f"  Green = fast travel, Red = slow travel, Grey = no data")
     print(f"\nOpening visualization window...")
     print(f"Backend: {matplotlib.get_backend()}")
+    print(f"If window doesn't appear, check your taskbar or window manager.")
 
-    # Force the window to appear and block
-    plt.show(block=True)
+    # Make sure figure is drawn
+    fig.canvas.draw()
+    fig.canvas.flush_events()
+
+    # Show and keep window open
+    plt.ion()  # Turn on interactive mode
+    plt.show()
+
+    # Keep the script running until window is closed
+    print("\nWindow should be visible now. Close the window to exit.")
+    try:
+        while plt.fignum_exists(fig.number):
+            plt.pause(0.1)
+    except KeyboardInterrupt:
+        print("\nInterrupted by user")
+
+    print("Visualization closed.")
 
 def main():
     if len(sys.argv) > 1:
