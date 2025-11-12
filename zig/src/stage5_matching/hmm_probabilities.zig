@@ -45,9 +45,10 @@ pub fn computeTransitionProbability(
     time_gap_sec: i64,
     params: HmmParams,
 ) f64 {
-    // Speed validation: reject if required speed > 1.5× speed_limit
+    // Speed validation: reject if required speed > 2.0× speed_limit
+    // Relaxed from 1.5× to account for GPS noise and timing errors
     const required_speed = route_distance_m / @as(f64, @floatFromInt(time_gap_sec));
-    if (required_speed > 1.5 * params.max_speed_mps) {
+    if (required_speed > 2.0 * params.max_speed_mps) {
         return 0.0; // Physically impossible
     }
 

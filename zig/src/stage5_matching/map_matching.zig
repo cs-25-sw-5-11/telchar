@@ -22,7 +22,7 @@ pub const MatchingConfig = struct {
     max_speed_mps: f64 = 41.67, // 150 km/h
 
     /// Speed validation multiplier (reject routes requiring >multiplier × max_speed)
-    speed_multiplier: f64 = 1.5,
+    speed_multiplier: f64 = 2.0,
 
     /// Time gap threshold for splitting traces (seconds)
     max_time_gap_sec: i64 = 100,
@@ -189,7 +189,11 @@ fn matchSubtour(
         candidates.deinit(allocator);
     }
 
-    for (points) |gps_point| {
+    // Build list of valid point indices and their candidates
+    var valid_point_indices = std.ArrayList(usize){};
+    defer valid_point_indices.deinit(allocator);
+
+    for (points, 0..) |gps_point, point_idx| {
         const point_candidates = try projection.projectPoint(
             allocator,
             gps_point.location,
@@ -198,12 +202,18 @@ fn matchSubtour(
         );
 
         if (point_candidates.len == 0) {
-            // No candidates for this point - matching fails
+            // Skip this GPS point - continue with remaining points
             allocator.free(point_candidates);
-            return null;
+            continue;
         }
 
         try candidates.append(allocator, point_candidates);
+        try valid_point_indices.append(allocator, point_idx);
+    }
+
+    // Need at least 2 valid points to do matching
+    if (candidates.items.len < 2) {
+        return null;
     }
 
     // Step 2: Build Viterbi layers (state = projection ID)
@@ -254,7 +264,10 @@ fn matchSubtour(
         var trans_list = std.ArrayList(V.Transition){};
         defer trans_list.deinit(allocator);
 
-        const time_diff = points[t + 1].timestamp - points[t].timestamp;
+        // Use valid point indices for time differences
+        const from_point_idx = valid_point_indices.items[t];
+        const to_point_idx = valid_point_indices.items[t + 1];
+        const time_diff = points[to_point_idx].timestamp - points[from_point_idx].timestamp;
 
         for (from_layer.states) |from_id| {
             for (to_layer.states) |to_id| {
@@ -267,8 +280,8 @@ fn matchSubtour(
 
                 // Compute transition probability
                 const great_circle_dist = haversine.distance(
-                    points[t].location,
-                    points[t + 1].location,
+                    points[from_point_idx].location,
+                    points[to_point_idx].location,
                 );
 
                 // Compute actual route distance if routing is enabled
@@ -346,12 +359,13 @@ fn matchSubtour(
     var result_projections = std.ArrayList(trip_types.Projection){};
     defer result_projections.deinit(allocator);
 
-    for (viterbi_result.states, 0..) |proj_id, gps_idx| {
+    for (viterbi_result.states, 0..) |proj_id, valid_idx| {
         const proj_result = proj_id_to_proj.get(proj_id).?;
+        const original_gps_idx = valid_point_indices.items[valid_idx];
 
         // Convert ProjectionResult to Projection
         const proj = trip_types.Projection{
-            .gps_index = @intCast(gps_idx),
+            .gps_index = @intCast(original_gps_idx),
             .edge_id = proj_result.edge_id,
             .location = proj_result.projected_point,
             .distance_from_start = proj_result.distance_from_start,

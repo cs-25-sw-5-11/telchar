@@ -44,7 +44,7 @@ pub const PipelineConfig = struct {
     max_projection_distance_m: f64 = 200.0,  // Increased from 100m to catch more GPS points
     gps_sigma_m: f64 = 8.0,                  // Increased from 4.07m to handle noisier GPS
     transition_beta: f64 = 2.0,              // Decreased from 3.0 to be more forgiving on transitions
-    use_routing: bool = true,                // Enable A* routing between projections
+    use_routing: bool = false,                // Enable A* routing between projections
 
     // Stage 6: Statistics
     time_interval_sec: u16 = 300, // 5 minutes
@@ -115,6 +115,27 @@ pub fn runPipeline(allocator: std.mem.Allocator, config: PipelineConfig) !void {
     var cleaned = try stage2.cleanTrips(allocator, raw_trips, cleaning_config);
     defer cleaned.deinit();  // This will free the valid trip contents
     std.debug.print("  ✓ Valid trips: {} | Invalid: {}\n", .{ cleaned.valid_trips.len, cleaned.invalid_count });
+
+    // Print rejection statistics
+    if (cleaned.invalid_count > 0) {
+        std.debug.print("  Rejection breakdown:\n", .{});
+        std.debug.print("    • Too few points: {} ({d:.1}%)\n", .{
+            cleaned.rejection_stats.too_few_points,
+            @as(f64, @floatFromInt(cleaned.rejection_stats.too_few_points)) * 100.0 / @as(f64, @floatFromInt(cleaned.invalid_count))
+        });
+        std.debug.print("    • Outside bounding box: {} ({d:.1}%)\n", .{
+            cleaned.rejection_stats.outside_bounding_box,
+            @as(f64, @floatFromInt(cleaned.rejection_stats.outside_bounding_box)) * 100.0 / @as(f64, @floatFromInt(cleaned.invalid_count))
+        });
+        std.debug.print("    • Time gap too large: {} ({d:.1}%)\n", .{
+            cleaned.rejection_stats.time_gap_too_large,
+            @as(f64, @floatFromInt(cleaned.rejection_stats.time_gap_too_large)) * 100.0 / @as(f64, @floatFromInt(cleaned.invalid_count))
+        });
+        std.debug.print("    • Excessive speed: {} ({d:.1}%)\n", .{
+            cleaned.rejection_stats.excessive_speed,
+            @as(f64, @floatFromInt(cleaned.rejection_stats.excessive_speed)) * 100.0 / @as(f64, @floatFromInt(cleaned.invalid_count))
+        });
+    }
 
     if (cleaned.valid_trips.len == 0) {
         std.debug.print("  ! No valid trips to process\n", .{});

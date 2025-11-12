@@ -17,10 +17,25 @@ pub const CleaningConfig = struct {
     bounding_box: geo.BoundingBox,
 };
 
+pub const InvalidationReason = enum {
+    too_few_points,
+    outside_bounding_box,
+    time_gap_too_large,
+    excessive_speed,
+};
+
 pub const CleaningResult = struct {
     valid_trips: []const trip_types.Trip, // Owned
     invalid_count: usize,
     allocator: std.mem.Allocator,
+
+    // Diagnostic statistics
+    rejection_stats: struct {
+        too_few_points: usize = 0,
+        outside_bounding_box: usize = 0,
+        time_gap_too_large: usize = 0,
+        excessive_speed: usize = 0,
+    } = .{},
 
     pub fn deinit(self: *CleaningResult) void {
         for (self.valid_trips) |*trip| {
@@ -42,36 +57,156 @@ pub fn cleanTrips(
     defer valid_trips.deinit(allocator);
 
     var invalid_count: usize = 0;
+    var too_few_points: usize = 0;
+    var outside_bounding_box: usize = 0;
+    var time_gap_too_large: usize = 0;
+    var excessive_speed: usize = 0;
 
     for (raw_trips) |*trip| {
-        if (try isValidTrip(trip.*, config)) {
-            try valid_trips.append(allocator, trip.*);
-        } else {
-            // Free invalid trip data
+        // First, try to clean and split the trip
+        const cleaned_subtrips = try cleanAndSplitTrip(allocator, trip.*, config) orelse {
+            // Trip completely failed cleaning - track why and free it
+            const validation_result = try validateTrip(trip.*, config);
+            if (validation_result) |reason| {
+                switch (reason) {
+                    .too_few_points => too_few_points += 1,
+                    .outside_bounding_box => outside_bounding_box += 1,
+                    .time_gap_too_large => time_gap_too_large += 1,
+                    .excessive_speed => excessive_speed += 1,
+                }
+            }
             var mutable_trip = trip.*;
             mutable_trip.deinit();
             invalid_count += 1;
+            continue;
+        };
+
+        defer allocator.free(cleaned_subtrips);
+
+        // Add all valid subtrips
+        for (cleaned_subtrips) |subtrip| {
+            try valid_trips.append(allocator, subtrip);
         }
     }
 
     return CleaningResult{
         .valid_trips = try valid_trips.toOwnedSlice(allocator),
         .invalid_count = invalid_count,
+        .rejection_stats = .{
+            .too_few_points = too_few_points,
+            .outside_bounding_box = outside_bounding_box,
+            .time_gap_too_large = time_gap_too_large,
+            .excessive_speed = excessive_speed,
+        },
         .allocator = allocator,
     };
 }
 
-/// Check if a trip passes validation criteria
-fn isValidTrip(trip: trip_types.Trip, config: CleaningConfig) !bool {
+/// Clean and split a trip into valid subtrips
+/// Splits at time gaps and filters out bad points (excessive speed, outside bbox)
+/// Returns null if no valid subtrips can be created
+fn cleanAndSplitTrip(
+    allocator: std.mem.Allocator,
+    trip: trip_types.Trip,
+    config: CleaningConfig,
+) !?[]trip_types.Trip {
+    if (trip.points.len < config.min_points) {
+        return null;
+    }
+
+    var subtrips = std.ArrayList(trip_types.Trip){};
+    errdefer {
+        for (subtrips.items) |*subtrip| {
+            var mut_subtrip = subtrip.*;
+            mut_subtrip.deinit();
+        }
+        subtrips.deinit(allocator);
+    }
+
+    var current_points = std.ArrayList(trip_types.GpsPoint){};
+    defer current_points.deinit(allocator);
+
+    var next_trip_id = trip.trip_id;
+
+    for (trip.points) |point| {
+        // Check if point is within bounding box
+        if (!config.bounding_box.contains(point.location)) {
+            // Skip this point - it's outside the area of interest
+            continue;
+        }
+
+        // If we have a previous point, check time gap and speed
+        if (current_points.items.len > 0) {
+            const prev_point = current_points.items[current_points.items.len - 1];
+            const time_diff = point.timestamp - prev_point.timestamp;
+
+            // Check for invalid time difference
+            if (time_diff <= 0) {
+                continue; // Skip points with non-positive time diff
+            }
+
+            // Check if time gap is too large - split here
+            if (time_diff > config.max_time_gap_sec) {
+                // Save current subtrip if it has enough points
+                if (current_points.items.len >= config.min_points) {
+                    const points_owned = try current_points.toOwnedSlice(allocator);
+                    try subtrips.append(allocator, trip_types.Trip{
+                        .trip_id = next_trip_id,
+                        .points = points_owned,
+                        .allocator = allocator,
+                    });
+                    next_trip_id += 1;
+                } else {
+                    // Not enough points, clear and start over
+                    current_points.clearRetainingCapacity();
+                }
+                // Start new subtrip with current point
+                try current_points.append(allocator, point);
+                continue;
+            }
+
+            // Check speed
+            const distance = haversine.distance(prev_point.location, point.location);
+            const speed_mps = distance / @as(f64, @floatFromInt(time_diff));
+
+            if (speed_mps > config.max_speed_mps) {
+                // Skip this point - excessive speed indicates GPS error
+                continue;
+            }
+        }
+
+        // Add valid point to current subtrip
+        try current_points.append(allocator, point);
+    }
+
+    // Save final subtrip
+    if (current_points.items.len >= config.min_points) {
+        const points_owned = try current_points.toOwnedSlice(allocator);
+        try subtrips.append(allocator, trip_types.Trip{
+            .trip_id = next_trip_id,
+            .points = points_owned,
+            .allocator = allocator,
+        });
+    }
+
+    if (subtrips.items.len == 0) {
+        return null;
+    }
+
+    return try subtrips.toOwnedSlice(allocator);
+}
+
+/// Validate a trip and return rejection reason (null if valid)
+fn validateTrip(trip: trip_types.Trip, config: CleaningConfig) !?InvalidationReason {
     // Check minimum points
     if (trip.points.len < config.min_points) {
-        return false;
+        return .too_few_points;
     }
 
     // Check all points within bounding box
     for (trip.points) |point| {
         if (!config.bounding_box.contains(point.location)) {
-            return false;
+            return .outside_bounding_box;
         }
     }
 
@@ -81,7 +216,7 @@ fn isValidTrip(trip: trip_types.Trip, config: CleaningConfig) !bool {
 
         // Check time gap
         if (time_diff > config.max_time_gap_sec or time_diff <= 0) {
-            return false;
+            return .time_gap_too_large;
         }
 
         // Check speed
@@ -89,11 +224,16 @@ fn isValidTrip(trip: trip_types.Trip, config: CleaningConfig) !bool {
         const speed_mps = distance / @as(f64, @floatFromInt(time_diff));
 
         if (speed_mps > config.max_speed_mps) {
-            return false;
+            return .excessive_speed;
         }
     }
 
-    return true;
+    return null; // Valid
+}
+
+/// Check if a trip passes validation criteria (kept for backward compatibility)
+fn isValidTrip(trip: trip_types.Trip, config: CleaningConfig) !bool {
+    return (try validateTrip(trip, config)) == null;
 }
 
 test "trip validation - too few points" {

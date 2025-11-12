@@ -29,6 +29,37 @@ pub fn build(b: *std.Build) void {
         run_cmd.addArgs(args);
     }
 
+    // Visualization executable
+    const viz_exe = b.addExecutable(.{
+        .name = "visualize",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/visualize.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
+    });
+
+    viz_exe.linkLibC();
+
+    // Add zstbi dependency for PNG writing
+    const zstbi = b.dependency("zstbi", .{
+        .target = target,
+        .optimize = optimize,
+    });
+    viz_exe.root_module.addImport("zstbi", zstbi.module("root"));
+
+    b.installArtifact(viz_exe);
+
+    // Run visualization command
+    const viz_run_step = b.step("viz", "Run the visualizer");
+    const viz_run_cmd = b.addRunArtifact(viz_exe);
+    viz_run_step.dependOn(&viz_run_cmd.step);
+    viz_run_cmd.step.dependOn(b.getInstallStep());
+
+    if (b.args) |args| {
+        viz_run_cmd.addArgs(args);
+    }
+
     // Tests
     const test_step = b.step("test", "Run unit tests");
 

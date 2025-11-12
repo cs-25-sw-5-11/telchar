@@ -1,4 +1,4 @@
 *.pyc
 *.npy
-*.csv
+# *.csv
 node_network/*.json
