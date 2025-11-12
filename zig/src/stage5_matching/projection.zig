@@ -5,12 +5,42 @@ const haversine = @import("../utils/haversine.zig");
 
 /// Result of projecting a point onto an edge
 pub const ProjectionResult = struct {
+    edge_id: graph.EdgeId,
     projected_point: geo.GeoPoint,
     distance_from_start: f64,  // Along edge
     perpendicular_distance: f64, // Error
     segment_index: u32,        // Which segment of edge
     segment_t: f64,            // Parameter [0,1] along segment
 };
+
+/// Find all edges within max_distance of a GPS point and project onto them
+pub fn projectPoint(
+    allocator: std.mem.Allocator,
+    gps_point: geo.GeoPoint,
+    network: *const graph.Network,
+    max_distance_m: f64,
+) ![]ProjectionResult {
+    var candidates = std.ArrayList(ProjectionResult){};
+    errdefer candidates.deinit(allocator);
+
+    // Use spatial index to find nearby edges
+    const nearby_edges = try network.findNearbyEdges(allocator, gps_point, max_distance_m);
+    defer allocator.free(nearby_edges);
+
+    for (nearby_edges) |edge_id| {
+        const edge = network.edges[edge_id];
+
+        if (projectPointOntoEdge(allocator, gps_point, edge, network.vertices)) |result| {
+            if (result.perpendicular_distance <= max_distance_m) {
+                var proj_with_id = result;
+                proj_with_id.edge_id = edge_id;
+                try candidates.append(allocator, proj_with_id);
+            }
+        }
+    }
+
+    return try candidates.toOwnedSlice(allocator);
+}
 
 /// Project a GPS point onto an edge
 /// Returns null if projection fails
@@ -21,18 +51,18 @@ pub fn projectPointOntoEdge(
     vertices: []const graph.Vertex,
 ) ?ProjectionResult {
     // Build polyline: start vertex -> intermediate nodes -> end vertex
-    var points = std.ArrayList(geo.GeoPoint).init(allocator);
-    defer points.deinit();
+    var points = std.ArrayList(geo.GeoPoint){};
+    defer points.deinit(allocator);
 
     // Find vertices
     const start_vertex = findVertex(vertices, edge.start_vertex_id) orelse return null;
     const end_vertex = findVertex(vertices, edge.end_vertex_id) orelse return null;
 
-    points.append(start_vertex.location) catch return null;
+    points.append(allocator, start_vertex.location) catch return null;
     for (edge.intermediate_nodes) |node| {
-        points.append(node.location) catch return null;
+        points.append(allocator, node.location) catch return null;
     }
-    points.append(end_vertex.location) catch return null;
+    points.append(allocator, end_vertex.location) catch return null;
 
     // Find closest point on polyline
     var min_perp_dist: f64 = std.math.inf(f64);
@@ -49,6 +79,7 @@ pub fn projectPointOntoEdge(
         if (proj.perpendicular_distance < min_perp_dist) {
             min_perp_dist = proj.perpendicular_distance;
             best_result = ProjectionResult{
+                .edge_id = 0, // Will be set by caller
                 .projected_point = proj.point,
                 .distance_from_start = cumulative_dist + proj.t * segment_length,
                 .perpendicular_distance = proj.perpendicular_distance,

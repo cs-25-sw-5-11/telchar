@@ -31,7 +31,7 @@ pub const RoadType = enum {
     service,
 
     pub fn fromString(s: []const u8) ?RoadType {
-        const map = std.ComptimeStringMap(RoadType, .{
+        const map = std.StaticStringMap(RoadType).initComptime(.{
             .{ "motorway", .motorway },
             .{ "trunk", .trunk },
             .{ "primary", .primary },
@@ -63,6 +63,7 @@ pub const Network = struct {
     vertex_index: VertexIndex,      // Quick lookup
     edge_index: EdgeIndex,          // Quick lookup
     spatial_index: SpatialIndex,    // Geographic lookup
+    bin_config: geo.BinConfig,      // For spatial queries
     allocator: std.mem.Allocator,
 
     /// Lookup table: VertexId -> array index
@@ -89,6 +90,45 @@ pub const Network = struct {
         self.vertex_index.deinit();
         self.edge_index.deinit();
         self.spatial_index.deinit();
+    }
+
+    /// Find all edges within a bounding box around a point
+    /// Uses spatial index for O(1) lookup of edges in nearby bins
+    pub fn findNearbyEdges(
+        self: *const Network,
+        allocator: std.mem.Allocator,
+        point: geo.GeoPoint,
+        max_distance_m: f64,
+    ) ![]EdgeId {
+        _ = max_distance_m; // Distance filtering done by projection code
+
+        var candidates = std.ArrayList(EdgeId){};
+        errdefer candidates.deinit(allocator);
+
+        // Get bin index for the point
+        const center_bin = self.bin_config.getBinIndex(point);
+
+        // Check the center bin and 8 surrounding bins (3x3 grid)
+        // This ensures we don't miss edges near bin boundaries
+        var dy: i32 = -1;
+        while (dy <= 1) : (dy += 1) {
+            var dx: i32 = -1;
+            while (dx <= 1) : (dx += 1) {
+                const check_bin = geo.BinIndex{
+                    .x = center_bin.x + dx,
+                    .y = center_bin.y + dy,
+                };
+
+                // Look up edges in this bin
+                if (self.spatial_index.get(check_bin)) |edge_indices| {
+                    for (edge_indices) |edge_idx| {
+                        try candidates.append(allocator, edge_idx);
+                    }
+                }
+            }
+        }
+
+        return try candidates.toOwnedSlice(allocator);
     }
 };
 

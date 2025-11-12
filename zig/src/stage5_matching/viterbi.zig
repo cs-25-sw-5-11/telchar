@@ -53,7 +53,7 @@ pub fn Viterbi(comptime StateId: type, comptime Cost: type) type {
             // Dynamic programming tables
             // costs[t][state] = minimum cost to reach state at time t
             const CostMap = std.AutoHashMap(StateId, Cost);
-            var costs: std.ArrayList(CostMap) = .{};
+            var costs = std.ArrayList(CostMap){};
             defer {
                 for (costs.items) |*map| {
                     map.deinit();
@@ -63,7 +63,7 @@ pub fn Viterbi(comptime StateId: type, comptime Cost: type) type {
 
             // backpointers[t][state] = previous state in optimal path
             const BackPointerMap = std.AutoHashMap(StateId, StateId);
-            var backpointers: std.ArrayList(BackPointerMap) = .{};
+            var backpointers = std.ArrayList(BackPointerMap){};
             defer {
                 for (backpointers.items) |*map| {
                     map.deinit();
@@ -90,7 +90,7 @@ pub fn Viterbi(comptime StateId: type, comptime Cost: type) type {
                 defer {
                     var iter = trans_map.valueIterator();
                     while (iter.next()) |list| {
-                        list.deinit();
+                        list.deinit(allocator);
                     }
                     trans_map.deinit();
                 }
@@ -98,9 +98,9 @@ pub fn Viterbi(comptime StateId: type, comptime Cost: type) type {
                 for (transitions[t - 1]) |trans| {
                     const entry = try trans_map.getOrPut(trans.to_state);
                     if (!entry.found_existing) {
-                        entry.value_ptr.* = TransList.init(allocator);
+                        entry.value_ptr.* = TransList{};
                     }
-                    try entry.value_ptr.append(trans);
+                    try entry.value_ptr.append(allocator, trans);
                 }
 
                 // For each state in current layer
@@ -149,13 +149,13 @@ pub fn Viterbi(comptime StateId: type, comptime Cost: type) type {
 
             // Reconstruct path
             var path_states = try std.ArrayList(StateId).initCapacity(allocator, layers.len);
-            defer path_states.deinit();
+            defer path_states.deinit(allocator);
 
             var current_state = best_final_state.?;
             var t = layers.len - 1;
 
             while (true) {
-                try path_states.append(current_state);
+                try path_states.append(allocator, current_state);
                 if (t == 0) break;
                 current_state = backpointers.items[t].get(current_state) orelse break;
                 t -= 1;
@@ -165,7 +165,7 @@ pub fn Viterbi(comptime StateId: type, comptime Cost: type) type {
             std.mem.reverse(StateId, path_states.items);
 
             return Path{
-                .states = try path_states.toOwnedSlice(),
+                .states = try path_states.toOwnedSlice(allocator),
                 .total_cost = min_final_cost.?,
                 .allocator = allocator,
             };

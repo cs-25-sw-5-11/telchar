@@ -32,6 +32,7 @@ pub const MatchedTrip = struct {
     trip_id: u64,
     projections: []const Projection,  // One per GPS point
     path: []const u32,                 // Edge IDs in traversal order
+    original_trip: *const Trip,        // Reference to original GPS data (for timestamps)
     allocator: std.mem.Allocator,
 
     pub fn deinit(self: *MatchedTrip) void {
