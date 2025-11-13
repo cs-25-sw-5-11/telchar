@@ -115,7 +115,7 @@ def main() -> None:
         distances_file="all_pairs_distances.npy", mapping_file="vertex_id_mapping.json"
     )
 
-    for trip_file in cleaned_files:
+    for trip_file in []:
         # Load and filter trip data
         df = pd.read_csv(trip_file)
         max_trip = df["trip_id"].max()
@@ -148,7 +148,38 @@ def main() -> None:
                 row.append(mean)
             csv_writer.writerow(row)
 
+    with open(os.path.join('data', 'output_data', 'edge_data.csv'), "w") as f:
+        f.write('edge_id,from_vertex,to_vertex,length_meters,oneway,road_type\n')
+        for edge in network.get_all_edges():
+            f.write(
+                f"{edge.id},{edge.start.id},{edge.end.id},{edge.length},{edge.oneway},{edge.type}\n"
+            )
+
+    with open(os.path.join('data', 'output_data', 'edge_intermediate_nodes_data.csv'), "w") as f:
+        f.write('edge_id,intermediate_node_ids\n')
+        for edge in network.get_all_edges():
+            node_ids = [node[2] for node in edge.non_vertex_nodes]
+            intermediate_node_ids = ";".join(str(node_id) for node_id in node_ids)
+            f.write(
+                f"{edge.id},{intermediate_node_ids}\n"
+            )
+
+    with open(os.path.join('data', 'output_data', 'intermediate_nodes_data.csv'), "w") as f:
+        f.write('node_id,latitude,longitude\n')
+        for edge in network.get_all_edges():
+            for node in edge.non_vertex_nodes:
+                f.write(
+                    f"{node[2]},{node[0]},{node[1]}\n"
+                )
+    
+    with open(os.path.join('data', 'output_data', 'vertex_data.csv'), "w") as f:
+        f.write('vertex_id,latitude,longitude\n')
+        for vertex in network.get_all_vertices():
+            f.write(f"{vertex.id},{vertex.lat},{vertex.lon}\n")
+
     return
+
+    
 
     # Todo: Fix JSON output
     # writeout_final_result()
