@@ -1,8 +1,10 @@
-import pandas as pd
+from typing import List
+
 import numpy as np
+import pandas as pd
 
 # List of edge data files from the 5 days
-edge_data_files = [
+edge_data_files: List[str] = [
     "./data/output_data/edge_data_day3.csv",
     "./data/output_data/edge_data_day4.csv",
     "./data/output_data/edge_data_day5.csv",
@@ -12,25 +14,43 @@ edge_data_files = [
 
 print("\n=== Averaging results across days ===")
 
-matrices = []
+matrices: List[pd.DataFrame] = []
 for file in edge_data_files:
-    df = pd.read_csv(file)
+    df: pd.DataFrame = pd.read_csv(file)
     matrices.append(df)
     print(f"Loaded {file}: shape {df.shape}")
 
-combined_df = matrices[0].copy()
+# Start with a copy of the first matrix structure
+combined_df: pd.DataFrame = matrices[0].copy()
 
-valid_counts = sum([(df.iloc[:, 1:] != -1).astype(int) for df in matrices])
-total_sum = sum([df.iloc[:, 1:].mask(df.iloc[:, 1:] == -1, 0) for df in matrices])
+# Count valid (non -1) entries for each cell across all days
+valid_counts: pd.DataFrame = sum(
+    [(df.iloc[:, 1:] != -1).astype(int) for df in matrices]
+)
+
+# Sum all valid values (replacing -1 with 0 for summation)
+total_sum: pd.DataFrame = sum(
+    [df.iloc[:, 1:].mask(df.iloc[:, 1:] == -1, 0) for df in matrices]
+)
 
 # Calculate averages only for valid entries
-averaged_values = total_sum / valid_counts.replace(0, np.nan)
+averaged_values: pd.DataFrame = total_sum / valid_counts.replace(0, np.nan)
 
-averaged_df = combined_df.copy()
+# Create final averaged dataframe
+averaged_df: pd.DataFrame = combined_df.copy()
 averaged_df.iloc[:, 1:] = averaged_values.fillna(-1)
 
+# Save the averaged results
 averaged_df.to_csv("./data/output_data/edge_data_averaged.csv", index=False)
 
-print("\n=== Final averaged file saved to ./data/output_data/edge_data_averaged.csv ===")
+print(
+    "\n=== Final averaged file saved to ./data/output_data/edge_data_averaged.csv ==="
+)
 print(f"Shape: {averaged_df.shape}")
-print(f"Data density: {((averaged_df.iloc[:, 1:] != -1).sum().sum() / (averaged_df.shape[0] * (averaged_df.shape[1]-1)) * 100):.2f}%")
+
+# Calculate data density (percentage of non-empty cells)
+total_cells: int = averaged_df.shape[0] * (averaged_df.shape[1] - 1)
+valid_cells: int = (averaged_df.iloc[:, 1:] != -1).sum().sum()
+data_density: float = valid_cells / total_cells * 100
+
+print(f"Data density: {data_density:.2f}%")

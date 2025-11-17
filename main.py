@@ -1,31 +1,52 @@
-import pandas as pd
-import geopandas as gpd
 from datetime import timedelta
-from fmm import STMATCH, STMATCHConfig, Network, NetworkGraph, GPSConfig, ResultConfig
+from typing import Dict, List
+
+import geopandas as gpd
+import pandas as pd
+from fmm import STMATCH, GPSConfig, Network, NetworkGraph, ResultConfig, STMATCHConfig
 
 
-def get_edge_lengths_from_shapefile(shapefile_path):
+def get_edge_lengths_from_shapefile(shapefile_path: str) -> Dict[int, float]:
+    """Load edge lengths from shapefile and return as dictionary.
+
+    Args:
+        shapefile_path: Path to the shapefile containing edge geometries
+
+    Returns:
+        Dictionary mapping edge_id to length in meters
+    """
     print("Loading edge lengths from shapefile...")
-    edges_gdf = gpd.read_file(shapefile_path)
+    edges_gdf: gpd.GeoDataFrame = gpd.read_file(shapefile_path)
 
     # Project to metric CRS if needed
     if edges_gdf.crs.is_geographic:
         edges_gdf = edges_gdf.to_crs("EPSG:32651")  # UTM for Harbin
 
-    edge_lengths = {}
+    edge_lengths: Dict[int, float] = {}
     for idx, row in edges_gdf.iterrows():
-        edge_id = row["fid"]
+        edge_id: int = row["fid"]
         edge_lengths[edge_id] = row.geometry.length
 
     print(f"Loaded {len(edge_lengths)} edge lengths")
     return edge_lengths
 
 
-def parse_stmatch_results(result_file, gps_file, edge_lengths):
-    print("Parsing STMatch results...")
-    result_df = pd.read_csv(result_file, sep=";")
+def parse_stmatch_results(
+    result_file: str, gps_file: str, edge_lengths: Dict[int, float]
+) -> pd.DataFrame:
+    """Parse STMatch results and calculate traversal information.
 
-    gps_df = pd.read_csv(gps_file, sep=";")
+    Args:
+        result_file: Path to STMatch result file
+        gps_file: Path to GPS data file
+        edge_lengths: Dictionary of edge lengths
+
+    Returns:
+        DataFrame with traversal information (timestamp, edge_id, speed, time)
+    """
+    print("Parsing STMatch results...")
+    result_df: pd.DataFrame = pd.read_csv(result_file, sep=";")
+    gps_df: pd.DataFrame = pd.read_csv(gps_file, sep=";")
 
     result_df["edges"] = result_df["cpath"].apply(
         lambda x: [int(e) for e in str(x).split(",")]
@@ -33,17 +54,17 @@ def parse_stmatch_results(result_file, gps_file, edge_lengths):
         else []
     )
 
-    traversals = []
+    traversals: List[Dict[str, float]] = []
 
     for idx, row in result_df.iterrows():
-        trip_id = row["id"]
-        edges = row["edges"]
+        trip_id: int = row["id"]
+        edges: List[int] = row["edges"]
 
         if not edges or len(edges) == 0:
             continue
 
         # Get GPS points for this trip
-        trip_gps = (
+        trip_gps: pd.DataFrame = (
             gps_df[gps_df["trip_id"] == trip_id]
             .sort_values("timestamp")
             .reset_index(drop=True)
@@ -53,25 +74,27 @@ def parse_stmatch_results(result_file, gps_file, edge_lengths):
             continue
 
         # Calculate traversal info for each edge
-        total_time = trip_gps["timestamp"].iloc[-1] - trip_gps["timestamp"].iloc[0]
-        total_length = sum([edge_lengths.get(edge_id, 100) for edge_id in edges])
+        total_time: float = (
+            trip_gps["timestamp"].iloc[-1] - trip_gps["timestamp"].iloc[0]
+        )
+        total_length: float = sum([edge_lengths.get(edge_id, 100) for edge_id in edges])
 
         if total_time <= 0 or total_length <= 0:
             continue
 
         # Distribute time across edges proportionally
-        cumulative_time = trip_gps["timestamp"].iloc[0]
+        cumulative_time: float = trip_gps["timestamp"].iloc[0]
 
         for edge_id in edges:
-            edge_length = edge_lengths.get(edge_id, 100)
-            edge_time = (edge_length / total_length) * total_time
+            edge_length: float = edge_lengths.get(edge_id, 100)
+            edge_time: float = (edge_length / total_length) * total_time
 
             # Calculate speed
             if edge_time > 0:
-                speed_ms = edge_length / edge_time
-                speed_kmh = speed_ms * 3.6
+                speed_ms: float = edge_length / edge_time
+                speed_kmh: float = speed_ms * 3.6
             else:
-                speed_kmh = 0
+                speed_kmh: float = 0
 
             traversals.append(
                 {
@@ -88,21 +111,30 @@ def parse_stmatch_results(result_file, gps_file, edge_lengths):
 
 
 def create_time_edge_matrix(
-    traversals_df, time_interval_minutes=5, output_file="edge_data.csv"
-):
+    traversals_df: pd.DataFrame, time_interval_minutes: int = 5
+) -> pd.DataFrame:
+    """Create time-edge matrix with traversal times.
+
+    Args:
+        traversals_df: DataFrame containing traversal data
+        time_interval_minutes: Time interval for aggregation in minutes
+
+    Returns:
+        DataFrame with time slots as rows and edges as columns
+    """
     print("Creating time edge matrix")
     # Convert Unix timestamps to datetime
     traversals_df["datetime"] = pd.to_datetime(traversals_df["timestamp"], unit="s")
 
     # Find start and end of day
-    start_of_day = (
+    start_of_day: pd.Timestamp = (
         traversals_df["datetime"]
         .min()
         .replace(hour=0, minute=0, second=0, microsecond=0)
     )
-    end_of_day = start_of_day + timedelta(days=1)
+    end_of_day: pd.Timestamp = start_of_day + timedelta(days=1)
 
-    time_slots = pd.date_range(
+    time_slots: pd.DatetimeIndex = pd.date_range(
         start=start_of_day, end=end_of_day, freq=f"{time_interval_minutes}min"
     )[:-1]
 
@@ -116,17 +148,17 @@ def create_time_edge_matrix(
         include_lowest=True,
     )
 
-    all_edges = sorted(traversals_df["edge_id"].unique())
+    all_edges: List[int] = sorted(traversals_df["edge_id"].unique())
 
     # Aggregate: for each (time_slot, edge), calculate mean traversal time
-    aggregated = (
+    aggregated: pd.DataFrame = (
         traversals_df.groupby(["time_slot", "edge_id"])["traversal_time_seconds"]
         .mean()
         .reset_index()
     )
 
     # Pivot to create matrix: rows=time_slots, columns=edges
-    matrix = aggregated.pivot(
+    matrix: pd.DataFrame = aggregated.pivot(
         index="time_slot", columns="edge_id", values="traversal_time_seconds"
     )
 
@@ -141,28 +173,33 @@ def create_time_edge_matrix(
     matrix = matrix.reset_index()
     matrix = matrix.rename(columns={"index": "time_slot"})
 
-    matrix.to_csv(output_file, index=False)
-
-    print(f"Matrix saved to {output_file}")
-    print(f"Shape: {matrix.shape}")
-    print(f"Non-empty cells: {(matrix.iloc[:, 1:] != -1).sum().sum()}")
-
     return matrix
 
 
-def generate_vertex_csv(shapefile_path, output_file="vertex.csv"):
+def generate_vertex_csv(
+    shapefile_path: str, output_file: str = "vertex.csv"
+) -> pd.DataFrame:
+    """Generate vertex CSV from shapefile.
+
+    Args:
+        shapefile_path: Path to the shapefile
+        output_file: Path to save the vertex CSV
+
+    Returns:
+        DataFrame containing vertex information (node_id, longitude, latitude)
+    """
     print("Generating vertex.csv...")
-    edges_gdf = gpd.read_file(shapefile_path)
+    edges_gdf: gpd.GeoDataFrame = gpd.read_file(shapefile_path)
 
     # Ensure we're in lat/lon
     if not edges_gdf.crs.is_geographic:
         edges_gdf = edges_gdf.to_crs("EPSG:4326")
 
-    vertices = {}
+    vertices: Dict[int, Dict[str, float]] = {}
 
     for idx, row in edges_gdf.iterrows():
-        u = row["u"]
-        v = row["v"]
+        u: int = row["u"]
+        v: int = row["v"]
         geom = row.geometry
 
         start_point = geom.coords[0]
@@ -174,7 +211,7 @@ def generate_vertex_csv(shapefile_path, output_file="vertex.csv"):
             vertices[v] = {"longitude": end_point[0], "latitude": end_point[1]}
 
     # Create DataFrame
-    vertex_df = pd.DataFrame(
+    vertex_df: pd.DataFrame = pd.DataFrame(
         [
             {
                 "node_id": node_id,
@@ -192,11 +229,22 @@ def generate_vertex_csv(shapefile_path, output_file="vertex.csv"):
     return vertex_df
 
 
-def generate_edge_connections_csv(shapefile_path, output_file="edge_connections.csv"):
-    print("Generating edge_connections.csv...")
-    edges_gdf = gpd.read_file(shapefile_path)
+def generate_edge_connections_csv(
+    shapefile_path: str, output_file: str = "edge_connections.csv"
+) -> pd.DataFrame:
+    """Generate edge connections CSV from shapefile.
 
-    edge_connections = []
+    Args:
+        shapefile_path: Path to the shapefile
+        output_file: Path to save the edge connections CSV
+
+    Returns:
+        DataFrame containing edge connection information
+    """
+    print("Generating edge_connections.csv...")
+    edges_gdf: gpd.GeoDataFrame = gpd.read_file(shapefile_path)
+
+    edge_connections: List[Dict[str, int]] = []
 
     for idx, row in edges_gdf.iterrows():
         edge_connections.append(
@@ -207,7 +255,7 @@ def generate_edge_connections_csv(shapefile_path, output_file="edge_connections.
             }
         )
 
-    edge_conn_df = pd.DataFrame(edge_connections)
+    edge_conn_df: pd.DataFrame = pd.DataFrame(edge_connections)
     edge_conn_df = edge_conn_df.sort_values("edge_id").reset_index(drop=True)
     edge_conn_df.to_csv(output_file, index=False)
 
@@ -215,15 +263,29 @@ def generate_edge_connections_csv(shapefile_path, output_file="edge_connections.
     return edge_conn_df
 
 
-def process_single_day(gps_file, network_file, result_file, edge_data_file):
+def process_single_day(
+    gps_file: str,
+    network_file: str,
+    result_file: str,
+) -> pd.DataFrame:
+    """Process a single day of GPS data.
+
+    Args:
+        gps_file: Path to GPS data file
+        network_file: Path to network shapefile
+        result_file: Path to save matching results
+
+    Returns:
+        DataFrame containing the time-edge matrix
+    """
     print(f"\n=== Processing file: {gps_file} ===")
 
-    network = Network(network_file, "fid", "u", "v")
-    graph = NetworkGraph(network)
-    model = STMATCH(network, graph)
-    stmatch_config = STMATCHConfig()
+    network: Network = Network(network_file, "fid", "u", "v")
+    graph: NetworkGraph = NetworkGraph(network)
+    model: STMATCH = STMATCH(network, graph)
+    stmatch_config: STMATCHConfig = STMATCHConfig()
 
-    input_config = GPSConfig()
+    input_config: GPSConfig = GPSConfig()
     input_config.file = gps_file
     input_config.id = "trip_id"
     input_config.x = "longitude"
@@ -231,38 +293,44 @@ def process_single_day(gps_file, network_file, result_file, edge_data_file):
     input_config.timestamp = "timestamp"
     input_config.gps_point = True
 
-    result_config = ResultConfig()
+    result_config: ResultConfig = ResultConfig()
     result_config.file = result_file
 
     model.match_gps_file(input_config, result_config, stmatch_config)
 
-    edge_lengths = get_edge_lengths_from_shapefile(network_file)
-    traversals_df = parse_stmatch_results(result_file, gps_file, edge_lengths)
-    matrix = create_time_edge_matrix(
-        traversals_df, time_interval_minutes=5, output_file=edge_data_file
+    edge_lengths: Dict[int, float] = get_edge_lengths_from_shapefile(network_file)
+    traversals_df: pd.DataFrame = parse_stmatch_results(
+        result_file, gps_file, edge_lengths
+    )
+    matrix: pd.DataFrame = create_time_edge_matrix(
+        traversals_df, time_interval_minutes=5
     )
 
     return matrix
 
 
 if __name__ == "__main__":
-    gps_files = [
+    gps_files: List[str] = [
         "./data/output_data/edge_data_day3.csv",
         "./data/output_data/edge_data_day4.csv",
         "./data/output_data/edge_data_day5.csv",
         "./data/output_data/edge_data_day6.csv",
         "./data/output_data/edge_data_day7.csv",
     ]
-    network_file = "./data/osm_data/harbin/edges.shp"
+    network_file: str = "./data/osm_data/harbin/edges.shp"
 
-    vertex_df = generate_vertex_csv(network_file, "./data/output_data/vertex.csv")
-    edge_conn_df = generate_edge_connections_csv(
+    vertex_df: pd.DataFrame = generate_vertex_csv(
+        network_file, "./data/output_data/vertex.csv"
+    )
+    edge_conn_df: pd.DataFrame = generate_edge_connections_csv(
         network_file, "./data/output_data/edge_connections.csv"
     )
 
-    matrices = []
     for i, gps_file in enumerate(gps_files, start=3):
-        result_file = f"./data/output_data/matched_data_day{i}.txt"
-        edge_data_file = f"./data/output_data/edge_data_day{i}.csv"
-        matrix = process_single_day(gps_file, network_file, result_file, edge_data_file)
-        matrices.append(matrix)
+        result_file: str = f"./data/output_data/matched_data_day{i}.txt"
+        edge_data_file: str = f"./data/output_data/edge_data_day{i}.csv"
+        matrix: pd.DataFrame = process_single_day(gps_file, network_file, result_file)
+        matrix.to_csv(edge_data_file, index=False)
+        print(f"Matrix saved to {edge_data_file}")
+        print(f"Shape: {matrix.shape}")
+        print(f"Non-empty cells: {(matrix.iloc[:, 1:] != -1).sum().sum()}")
