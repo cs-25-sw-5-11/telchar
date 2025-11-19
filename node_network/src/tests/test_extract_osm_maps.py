@@ -1,51 +1,15 @@
-import json
-import os
+from extract_osm_map.extract_osm_map import extract_roads, extract_nodes, write_to_json, extract_map
 import xml.etree.ElementTree as ET
-
 import pytest
+from .utils_functions import setup_mock_osm_file, delete_mock_osm_file
 from extract_osm_map.extract_osm_map import (
     extract_map,
     extract_nodes,
     extract_roads,
     write_to_json,
 )
-
-
-def setup_mock_osm_file():
-    # Create a mock OSM file for testing
-    with open("mock_osm.osm", "w", encoding="utf-8") as f:
-        f.write(
-            """<?xml version='1.0' encoding='UTF-8'?>
-                <osm version="0.6" generator="Overpass API 0.7.62.8 e802775f">
-                  <node id="1001" lat="45.001" lon="126.001"/>
-                  <node id="1002" lat="45.002" lon="126.002"/>
-                  <node id="1003" lat="45.003" lon="126.003"/>
-                  <node id="1004" lat="45.004" lon="126.004"/>
-                  <node id="1005" lat="45.005" lon="126.005"/>
-                  <way id="1">
-                    <nd ref="1001"/>
-                    <nd ref="1002"/>
-                    <nd ref="1003"/>
-                    <tag k="highway" v="primary"/>
-                    <tag k="oneway" v="yes"/>
-                  </way>
-                  <way id="2">
-                    <nd ref="1003"/>
-                    <nd ref="1004"/>
-                    <tag k="highway" v="primary"/>
-                  </way>
-                  <way id="3">
-                    <nd ref="1004"/>
-                    <nd ref="1005"/>
-                    <tag k="highway" v="lane"/>
-                  </way>                          
-                </osm>"""
-        )
-
-
-def delete_mock_osm_file():
-    os.remove("mock_osm.osm")
-
+import os
+import json
 
 def test_unit_extract_roads_returns_correct_output():
     # Arrange
