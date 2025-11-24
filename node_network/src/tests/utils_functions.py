@@ -40,16 +40,16 @@ def setup_more_complex_mock_osm_file():
         f.write(
             """<?xml version='1.0' encoding='UTF-8'?>
                 <osm version="0.6" generator="Overpass API 0.7.62.8 e802775f">
-                  <node id="1001" lat="45.001" lon="126.001"/>
-                  <node id="1002" lat="45.002" lon="126.002"/>
-                  <node id="1003" lat="45.003" lon="126.003"/>
-                  <node id="1004" lat="45.004" lon="126.004"/>
-                  <node id="1005" lat="45.005" lon="126.005"/>
-                  <node id="2001" lat="46.001" lon="127.001"/>
-                  <node id="2002" lat="46.002" lon="127.002"/>
-                  <node id="2003" lat="46.003" lon="127.003"/>
-                  <node id="2004" lat="46.004" lon="127.004"/>
-                  <node id="2005" lat="46.005" lon="127.005"/>
+                  <node id="1001" lat="45.7015" lon="126.5505"/>
+                  <node id="1002" lat="45.7025" lon="126.5505"/>
+                  <node id="1003" lat="45.7035" lon="126.5505"/>
+                  <node id="1004" lat="45.7045" lon="126.5505"/>
+                  <node id="1005" lat="45.7055" lon="126.5505"/>
+                  <node id="2001" lat="45.7515" lon="126.6505"/>
+                  <node id="2002" lat="45.7525" lon="126.6505"/>
+                  <node id="2003" lat="45.7535" lon="126.6505"/>
+                  <node id="2004" lat="45.7545" lon="126.6505"/>
+                  <node id="2005" lat="45.7555" lon="126.6505"/>
                   <way id="1">
                     <nd ref="1001"/>
                     <nd ref="1002"/>

@@ -48,7 +48,7 @@ def test_build_graph_creates_appropriate_vertices_with_mock_data():
 
     assert len(network.get_all_vertices()) == 8
     assert vertex1001 is not None
-    assert (vertex1001.lat, vertex1001.lon) == (45.001, 126.001)
+    assert (vertex1001.lat, vertex1001.lon) == (45.7015, 126.5505)
     assert vertex1001.get_backward_vertices() == []
     assert len(vertex1001.get_outward_vertices()) == 1
     assert vertex1001.get_outward_vertices()[0].id == 1002
