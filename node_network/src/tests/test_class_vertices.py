@@ -1,4 +1,4 @@
-from classes import Vertex, Network
+from classes import Vertex, Network, Edge
 from utils.functions_misc import get_bin_indices
 from .utils_functions import build_graph_with_mock_data
 
@@ -53,3 +53,53 @@ def test_build_graph_creates_appropriate_vertices_with_mock_data():
     assert len(vertex1001.get_outward_vertices()) == 1
     assert vertex1001.get_outward_vertices()[0].id == 1002
     assert network.get_vertex_by_id(2003) is None
+
+def test_delete_vertex_deletes_vertex():
+    network = Network()
+    vertex1 = Vertex(network, lat=45.0, lon=126.0, node_id=1)
+    
+    vertex1.delete_vertex()
+
+    assert vertex1 not in network.get_all_vertices()
+
+def test_vertex_get_outward_edges_returns_correct_edges():
+    network = build_graph_with_mock_data()
+    vertex1002 = network.get_vertex_by_id(1002)
+    expected_outward_edge = [network.get_edge_by_id(1)] # Edge from 1002 to 1003
+
+    outward_edges = vertex1002.get_outward_edges()
+
+    assert len(outward_edges) == 1
+    assert outward_edges == expected_outward_edge
+
+def test_vertex_get_backward_edges_returns_correct_edges():
+    network = build_graph_with_mock_data()
+    vertex1002 = network.get_vertex_by_id(1002)
+    expected_backward_edge = [network.get_edge_by_id(0),  # Edge from 1001 to 1002
+                              network.get_edge_by_id(6)]  # Edge from 2002 to 1002
+
+    backward_edges = vertex1002.get_backward_edges()
+
+    assert len(backward_edges) == 2
+    assert backward_edges == expected_backward_edge
+
+def test_vertex_get_outward_vertices_returns_correct_vertices():
+    network = build_graph_with_mock_data()
+    vertex1002 = network.get_vertex_by_id(1002)
+    expected_outward_vertex = [network.get_vertex_by_id(1003)]
+
+    outward_vertices = vertex1002.get_outward_vertices()
+
+    assert len(outward_vertices) == 1
+    assert outward_vertices == expected_outward_vertex
+
+def test_vertex_get_backward_vertices_returns_correct_vertices():
+    network = build_graph_with_mock_data()
+    vertex1002 = network.get_vertex_by_id(1002)
+    expected_backward_vertex = [network.get_vertex_by_id(1001),
+                                network.get_vertex_by_id(2002)]
+
+    backward_vertices = vertex1002.get_backward_vertices()
+
+    assert len(backward_vertices) == 2
+    assert backward_vertices == expected_backward_vertex
