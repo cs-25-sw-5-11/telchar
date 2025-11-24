@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import heapq
 import json
 import logging
@@ -376,57 +375,6 @@ class Network:
 
         edge._network = None
 
-    def split_edge_at_vertex(
-        self, edge: "Edge", vertex: "Vertex", temporary: bool = False
-    ) -> Optional[Tuple["Edge", "Edge"]]:
-        """Split an edge at a given vertex, returning the two new edges"""
-        # Verify vertex is on edge
-        node_ids_on_edge = [node_id for _, _, node_id in edge.non_vertex_nodes]
-        if vertex.id not in node_ids_on_edge:
-            raise ValueError(f"Vertex {vertex.id} not found on Edge {edge.id}")
-
-        # Find index of vertex in non-vertex nodes
-        split_index = node_ids_on_edge.index(vertex.id)
-
-        # Create new edges
-        start_vertex = edge.start
-        end_vertex = edge.end
-
-        # Nodes for the first new edge
-        nodes_edge1 = edge.non_vertex_nodes[:split_index]
-        edge1 = Edge(
-            network=self,
-            start_vertex=start_vertex,
-            end_vertex=vertex,
-            non_vertex_nodes=nodes_edge1,
-            edge_type=edge.type,
-            oneway=edge.oneway,
-            parent_edge=edge.parent_edge,
-        )
-
-        # Nodes for the second new edge
-        nodes_edge2 = edge.non_vertex_nodes[split_index + 1 :]
-        edge2 = Edge(
-            network=self,
-            start_vertex=vertex,
-            end_vertex=end_vertex,
-            non_vertex_nodes=nodes_edge2,
-            edge_type=edge.type,
-            oneway=edge.oneway,
-            parent_edge=edge.parent_edge,
-        )
-
-        # If this is a temporary operation, detach the original edge and set parent_edges to new edges.
-        # Otherwise, remove the original edge from the network.
-        if temporary:
-            edge.detach_edge()
-            edge1.parent_edge = edge.parent_edge
-            edge2.parent_edge = edge.parent_edge
-        else:
-            edge.delete_edge()
-
-        return (edge1, edge2)
-
     def get_vertex_by_id(self, vertex_id: int) -> Optional["Vertex"]:
         """Get a vertex by its ID"""
         return self._vertices.get(vertex_id)
@@ -456,22 +404,6 @@ class Network:
         self._edge_id_counter += 1
         return edge_id
 
-    def clear_all(self) -> None:
-        """Clear all vertices and edges from the network"""
-        self._vertices.clear()
-        self._edges.clear()
-        self._temporary_vertices.clear()
-        self._temporary_edges.clear()
-        self._detached_edges.clear()
-        self._vertex_bin_lookup.clear()
-        self._edge_bin_lookup.clear()
-        self._vertex_id_counter = 1
-        self._edge_id_counter = 0
-
-    def copy(self) -> "Network":
-        """Create a deep copy of the network"""
-        return copy.deepcopy(self)
-
     def get_stats(self) -> Dict[str, int]:
         """Get network statistics"""
         return {
@@ -481,23 +413,6 @@ class Network:
             "temporary_edges": len(self._temporary_edges),
             "detached_edges": len(self._detached_edges),
         }
-
-    def delete_all_temporary_vertices(self) -> None:
-        """Delete all temporary vertices and their edges"""
-        for vertex in list(self._temporary_vertices):
-            vertex.delete_vertex()
-        self._temporary_vertices.clear()
-
-    def delete_all_temporary_edges(self) -> None:
-        """Delete all temporary edges"""
-        for edge in list(self._temporary_edges):
-            edge.delete_edge()
-        self._temporary_edges.clear()
-
-    def restore_all_detached_edges(self) -> None:
-        """Restore all detached edges"""
-        for edge in list(self._detached_edges):
-            edge._restore_references_to_edge()
 
     def get_all_vertices(self) -> List["Vertex"]:
         """Get a list of all vertices in the network"""
@@ -537,13 +452,6 @@ class Network:
         """Reset vertex and edge ID counters based on current max IDs"""
         self._vertex_id_counter = self.get_max_vertex_id() + 1
         self._edge_id_counter = self.get_max_edge_id() + 1
-
-    def undo_temporary_modifications(self) -> None:
-        """Undo all temporary modifications to the network"""
-        self.delete_all_temporary_edges()
-        self.delete_all_temporary_vertices()
-        self.restore_all_detached_edges()
-        self.reset_id_counters()
 
     def __repr__(self):
         return f"Network(vertices={len(self._vertices)}, edges={len(self._edges)})"
