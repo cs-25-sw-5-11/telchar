@@ -51,10 +51,10 @@ def test_get_distance_between_projections_along_shared_edge_throws_error_if_edge
     network, trip = setup_network_and_trip()
     
     point_projection_1 = PointProjection(trip=trip,
-                                         parent_edge=network.get_all_edges()[0],
+                                         parent_edge=network.get_edge_by_id(0),
                                          lat=0, lon=0, seg_idx=0, seg_t=0.0)
     point_projection_2 = PointProjection(trip=trip,
-                                         parent_edge=network.get_all_edges()[1],
+                                         parent_edge=network.get_edge_by_id(1),
                                          lat=0, lon=0, seg_idx=0, seg_t=0.0)
 
     with pytest.raises(ValueError) as e:
@@ -64,7 +64,7 @@ def test_get_distance_between_projections_along_shared_edge_throws_error_if_edge
 def test_get_distance_between_projections_along_shared_edge_calculates_correct_distance_with_forward_movement_along_oneway():
     network, trip = setup_network_and_trip()
     
-    shared_edge = network.get_all_edges()[0]
+    shared_edge = network.get_edge_by_id(0)
     point_projection_1 = PointProjection(trip=trip,
                                          parent_edge=shared_edge,
                                          lat=0, lon=0, seg_idx=0, seg_t=0.25)
@@ -81,7 +81,7 @@ def test_get_distance_between_projections_along_shared_edge_calculates_correct_d
 def test_get_distance_between_projections_along_shared_edge_returns_none_with_backward_movement_along_oneway():
     network, trip = setup_network_and_trip()
     
-    shared_edge = network.get_all_edges()[0]
+    shared_edge = network.get_edge_by_id(0)
     point_projection_1 = PointProjection(trip=trip,
                                          parent_edge=shared_edge,
                                          lat=0, lon=0, seg_idx=0, seg_t=0.75)
@@ -96,7 +96,7 @@ def test_get_distance_between_projections_along_shared_edge_returns_none_with_ba
 def test_get_distance_between_projections_along_shared_edge_calculates_correct_distance_with_backward_movement_along_non_oneway():
     network, trip = setup_network_and_trip()
     
-    edge = network.get_all_edges()[1]
+    edge = network.get_edge_by_id(1)
     point_projection_1 = PointProjection(trip=trip,
                                          parent_edge=edge,
                                          lat=0, lon=0, seg_idx=0, seg_t=0.25)
@@ -114,11 +114,12 @@ def test_get_distance_to_vertex_returns_correct_distances_to_possible_target():
     network, trip = setup_network_and_trip()
     target_vertex = network.get_vertex_by_id(1003)
     
-    edge = network.get_all_edges()[0]
+    edge = network.get_edge_by_id(0) # Edge starting at 1001 and ending at 1002.
     point_projection = PointProjection(trip=trip,
                                        parent_edge=edge,
                                        lat=0, lon=0, seg_idx=0, seg_t=0.5)
 
+    # Edge 1 starts at 1002 and ends at 1003.
     expected_onward_distance = point_projection.onward_vertex_dist + \
                                network.get_edge_by_id(1).length
 
@@ -128,9 +129,9 @@ def test_get_distance_to_vertex_returns_correct_distances_to_possible_target():
     
 def test_get_distance_to_vertex_returns_int32_max_to_impossible_target():
     network, trip = setup_network_and_trip()
-    target_vertex = network.get_vertex_by_id(1001)
+    target_vertex = network.get_vertex_by_id(1001) # Start of oneway edge with no incoming edges.
     
-    edge = network.get_all_edges()[0]
+    edge = network.get_edge_by_id(0) # Edge starting at 1001.
     point_projection = PointProjection(trip=trip,
                                        parent_edge=edge,
                                        lat=0, lon=0, seg_idx=0, seg_t=0.5)
@@ -143,7 +144,7 @@ def test_get_distance_to_vertex_can_go_backward_along_non_oneway():
     network, trip = setup_network_and_trip()
     target_vertex = network.get_vertex_by_id(1003)
     
-    edge = network.get_all_edges()[2]
+    edge = network.get_edge_by_id(2) # Has vertex 1003 as start.
     point_projection = PointProjection(trip=trip,
                                        parent_edge=edge,
                                        lat=0, lon=0, seg_idx=0, seg_t=0.5)
@@ -157,7 +158,7 @@ def test_get_distance_from_vertex_returns_correct_distance_from_possible_source(
     network, trip = setup_network_and_trip()
     source_vertex = network.get_vertex_by_id(1002)
     
-    edge = network.get_all_edges()[2]
+    edge = network.get_edge_by_id(2)
     point_projection = PointProjection(trip=trip,
                                        parent_edge=edge,
                                        lat=0, lon=0, seg_idx=0, seg_t=0.5)
@@ -171,7 +172,7 @@ def test_get_distance_from_vertex_returns_int32_max_from_impossible_source():
     network, trip = setup_network_and_trip()
     source_vertex = network.get_vertex_by_id(2001)
     
-    edge = network.get_all_edges()[2]
+    edge = network.get_edge_by_id(2)
     point_projection = PointProjection(trip=trip,
                                        parent_edge=edge,
                                        lat=0, lon=0, seg_idx=0, seg_t=0.5)
@@ -202,11 +203,6 @@ def test_get_distance_between_projections_on_impossible_paths_returns_int32_max(
     edge_1 = network.get_edge_by_id(1)
     edge_2 = network.get_edge_by_id(0)
     # Edge 1 leads into edge 2, but is oneway and no path exists to its start vertex 
-    print(network.get_all_edges())
-
-    for vertex in network.get_all_vertices():
-        print(network.get_distance(vertex, network.get_vertex_by_id(1001)))
-    print()
     
     point_projection_1 = PointProjection(trip=trip,
                                          parent_edge=edge_1,
@@ -216,7 +212,6 @@ def test_get_distance_between_projections_on_impossible_paths_returns_int32_max(
                                          lat=0, lon=0, seg_idx=0, seg_t=0.5)
 
     calculated_distance = point_projection_1.get_distance_between_projections(network, point_projection_2)
-    print(calculated_distance)
 
     assert calculated_distance >= np.iinfo(np.int32).max
 
@@ -238,8 +233,6 @@ def test_get_distance_between_projections_on_same_projection_in_forward_directio
 def test_get_distance_between_projections_on_same_projection_in_backward_direction_along_oneway_returns_correct_distance():
     network, trip = setup_network_and_trip()
     edge_1 = network.get_edge_by_id(1)
-
-    print(network.get_all_edges())
     
     # Have one projection be further along an oneway edge, means that we have to circle back around.
     point_projection_1 = PointProjection(trip=trip,
