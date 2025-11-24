@@ -142,8 +142,8 @@ class Network:
             visited.add(current_id)
 
             current_vertex: Vertex = self.get_vertex_by_id(current_id)
-            for edge in current_vertex.get_outward_edges():
-                neighbor_id = edge.end.id
+            for edge, vertex in zip(current_vertex.get_outward_edges(), current_vertex.get_outward_vertices()):
+                neighbor_id = vertex.id
                 new_dist = current_dist + edge.length
 
                 if neighbor_id not in distances or new_dist < distances[neighbor_id]:
