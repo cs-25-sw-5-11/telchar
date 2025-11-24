@@ -103,3 +103,31 @@ def test_get_backward_vertices_returns_correct_vertices():
 
     assert len(backward_vertices) == 2
     assert backward_vertices == expected_backward_vertex
+
+def test_outward_edges_and_vertices_match():
+    network = build_graph_with_mock_data()
+    for vertex in network.get_all_vertices():
+        outward_edges = vertex.get_outward_edges()
+        outward_vertices = vertex.get_outward_vertices()
+        assert len(outward_edges) == len(outward_vertices)
+        for edge, out_vertex in zip(outward_edges, outward_vertices):
+            if edge.start == vertex:
+                edge_other_vertex = edge.end
+            else:
+                edge_other_vertex = edge.start
+
+            assert edge_other_vertex == out_vertex
+
+def test_backward_edges_and_vertices_match():
+    network = build_graph_with_mock_data()
+    for vertex in network.get_all_vertices():
+        backward_edges = vertex.get_backward_edges()
+        backward_vertices = vertex.get_backward_vertices()
+        assert len(backward_edges) == len(backward_vertices)
+        for edge, back_vertex in zip(backward_edges, backward_vertices):
+            if edge.start == vertex:
+                edge_other_vertex = edge.end
+            else:
+                edge_other_vertex = edge.start
+
+            assert edge_other_vertex == back_vertex
