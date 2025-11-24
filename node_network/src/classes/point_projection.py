@@ -48,7 +48,7 @@ class PointProjection:
             return 0.0
 
         if self.parent_edge == second_projection.parent_edge:
-            shared_edge_result = self.get_distance_between_projections_sharing_edge(second_projection)
+            shared_edge_result = self.get_distance_between_projections_along_shared_edge(second_projection)
             if shared_edge_result is not None:
                 return shared_edge_result
 
@@ -85,7 +85,7 @@ class PointProjection:
 
         return min_dist if min_dist != float("inf") else None
 
-    def get_distance_between_projections_sharing_edge(
+    def get_distance_between_projections_along_shared_edge(
         self, second_projection: "PointProjection"
     ) -> float | None:
         """Get the distance in meters between this projection and another projection

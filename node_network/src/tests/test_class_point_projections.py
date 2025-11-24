@@ -47,7 +47,7 @@ def test_created_point_projection_is_correctly_initialized():
     assert point_projection.onward_vertex == vertex2
     assert abs(point_projection.backward_vertex_dist - expected_backward_dist) < 1e-6 
 
-def test_get_distance_between_projections_sharing_edge_throws_error_if_edge_not_shared():
+def test_get_distance_between_projections_along_shared_edge_throws_error_if_edge_not_shared():
     network, trip = setup_network_and_trip()
     
     point_projection_1 = PointProjection(trip=trip,
@@ -58,42 +58,42 @@ def test_get_distance_between_projections_sharing_edge_throws_error_if_edge_not_
                                          lat=0, lon=0, seg_idx=0, seg_t=0.0)
 
     with pytest.raises(ValueError) as e:
-        point_projection_1.get_distance_between_projections_sharing_edge(point_projection_2)
+        point_projection_1.get_distance_between_projections_along_shared_edge(point_projection_2)
     assert "Projections do not share the same parent edge." in str(e.value)
 
-def test_get_distance_between_projections_sharing_edge_calculates_correct_distance_with_forward_movement_along_oneway():
+def test_get_distance_between_projections_along_shared_edge_calculates_correct_distance_with_forward_movement_along_oneway():
     network, trip = setup_network_and_trip()
     
-    edge = network.get_all_edges()[0]
+    shared_edge = network.get_all_edges()[0]
     point_projection_1 = PointProjection(trip=trip,
-                                         parent_edge=edge,
+                                         parent_edge=shared_edge,
                                          lat=0, lon=0, seg_idx=0, seg_t=0.25)
     point_projection_2 = PointProjection(trip=trip,
-                                         parent_edge=edge,
+                                         parent_edge=shared_edge,
                                          lat=0, lon=0, seg_idx=0, seg_t=0.75)
 
-    expected_distance = edge.length * (0.75 - 0.25)
+    expected_distance = shared_edge.length * (0.75 - 0.25)
 
-    calculated_distance = point_projection_1.get_distance_between_projections_sharing_edge(point_projection_2)
+    calculated_distance = point_projection_1.get_distance_between_projections_along_shared_edge(point_projection_2)
 
     assert abs(calculated_distance - expected_distance) < 1e-6
 
-def test_get_distance_between_projections_sharing_edge_returns_none_with_backward_movement_along_oneway():
+def test_get_distance_between_projections_along_shared_edge_returns_none_with_backward_movement_along_oneway():
     network, trip = setup_network_and_trip()
     
-    edge = network.get_all_edges()[0]
+    shared_edge = network.get_all_edges()[0]
     point_projection_1 = PointProjection(trip=trip,
-                                         parent_edge=edge,
+                                         parent_edge=shared_edge,
                                          lat=0, lon=0, seg_idx=0, seg_t=0.75)
     point_projection_2 = PointProjection(trip=trip,
-                                         parent_edge=edge,
+                                         parent_edge=shared_edge,
                                          lat=0, lon=0, seg_idx=0, seg_t=0.25)
 
-    calculated_distance = point_projection_1.get_distance_between_projections_sharing_edge(point_projection_2)
+    calculated_distance = point_projection_1.get_distance_between_projections_along_shared_edge(point_projection_2)
 
     assert calculated_distance is None
 
-def test_get_distance_between_projections_sharing_edge_calculates_correct_distance_with_backward_movement_along_non_oneway():
+def test_get_distance_between_projections_along_shared_edge_calculates_correct_distance_with_backward_movement_along_non_oneway():
     network, trip = setup_network_and_trip()
     
     edge = network.get_all_edges()[1]
@@ -106,7 +106,7 @@ def test_get_distance_between_projections_sharing_edge_calculates_correct_distan
 
     expected_distance = edge.length * (0.75 - 0.25)
 
-    calculated_distance = point_projection_1.get_distance_between_projections_sharing_edge(point_projection_2)
+    calculated_distance = point_projection_1.get_distance_between_projections_along_shared_edge(point_projection_2)
 
     assert abs(calculated_distance - expected_distance) < 1e-6
 
