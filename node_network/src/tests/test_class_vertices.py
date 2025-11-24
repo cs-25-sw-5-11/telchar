@@ -62,7 +62,7 @@ def test_delete_vertex_deletes_vertex():
 
     assert vertex1 not in network.get_all_vertices()
 
-def test_vertex_get_outward_edges_returns_correct_edges():
+def test_get_outward_edges_returns_correct_edges():
     network = build_graph_with_mock_data()
     vertex1002 = network.get_vertex_by_id(1002)
     expected_outward_edge = [network.get_edge_by_id(1)] # Edge from 1002 to 1003
@@ -72,7 +72,7 @@ def test_vertex_get_outward_edges_returns_correct_edges():
     assert len(outward_edges) == 1
     assert outward_edges == expected_outward_edge
 
-def test_vertex_get_backward_edges_returns_correct_edges():
+def test_get_backward_edges_returns_correct_edges():
     network = build_graph_with_mock_data()
     vertex1002 = network.get_vertex_by_id(1002)
     expected_backward_edge = [network.get_edge_by_id(0),  # Edge from 1001 to 1002
@@ -83,7 +83,7 @@ def test_vertex_get_backward_edges_returns_correct_edges():
     assert len(backward_edges) == 2
     assert backward_edges == expected_backward_edge
 
-def test_vertex_get_outward_vertices_returns_correct_vertices():
+def test_get_outward_vertices_returns_correct_vertices():
     network = build_graph_with_mock_data()
     vertex1002 = network.get_vertex_by_id(1002)
     expected_outward_vertex = [network.get_vertex_by_id(1003)]
@@ -93,7 +93,7 @@ def test_vertex_get_outward_vertices_returns_correct_vertices():
     assert len(outward_vertices) == 1
     assert outward_vertices == expected_outward_vertex
 
-def test_vertex_get_backward_vertices_returns_correct_vertices():
+def test_get_backward_vertices_returns_correct_vertices():
     network = build_graph_with_mock_data()
     vertex1002 = network.get_vertex_by_id(1002)
     expected_backward_vertex = [network.get_vertex_by_id(1001),
