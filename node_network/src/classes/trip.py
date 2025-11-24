@@ -312,6 +312,13 @@ class Trip:
         # Simple case: end is a vertex, simply run find_shortest_edge_path_to_vertex.
         if isinstance(end, Vertex):
             return self._find_shortest_edge_path_to_vertex(start, end)
+        
+        # Simple case: start and end are on same edge.
+        if isinstance(start, PointProjection) and isinstance(end, PointProjection):
+            if start.parent_edge == end.parent_edge:
+                shared_edge_result = start.get_distance_between_projections_along_shared_edge(end)
+                if shared_edge_result is not None:
+                    return (shared_edge_result, [start.parent_edge])
 
         # Otherwise, end is a PointProjection. Start by checking whether the parent edge is oneway.
         # If it is oneway, we can only reach it from the start vertex.
