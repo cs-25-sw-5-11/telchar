@@ -54,7 +54,7 @@ class Trip:
             )
             self.apply_speed_to_edges(edges, time_index, speed)
 
-    def get_id_max(self) -> int:
+    def get_max_trip_id(self) -> int:
         """Get the maximum ID used in this trip (for vertices and point projections)."""
         return self._point_projection_id_counter - 1
 
@@ -299,12 +299,12 @@ class Trip:
 
         # Determine if the item is a PointProjection or Vertex.
         # Vertices will have IDs with 10 or more digits, while PointProjections have smaller IDs.
-        if start_item_id <= self.get_id_max():
+        if start_item_id <= self.get_max_trip_id():
             start = self.get_point_projection_by_id(start_item_id)
         else:
             start = self.network.get_vertex_by_id(start_item_id)
 
-        if end_item_id <= self.get_id_max():
+        if end_item_id <= self.get_max_trip_id():
             end = self.get_point_projection_by_id(end_item_id)
         else:
             end = self.network.get_vertex_by_id(end_item_id)
