@@ -309,42 +309,67 @@ class Trip:
         else:
             end = self.network.get_vertex_by_id(end_item_id)
 
-        # Simple case: end is a vertex, simply run find_shortest_edge_path_to_vertex.
+        # TODO rewrite to keep a running track of min result, then return that, in case one of the
+        # simple cases is not the optimal case.
+        best_result = (float("inf"), [])
+
         if isinstance(end, Vertex):
             return self._find_shortest_edge_path_to_vertex(start, end)
         
-        # Simple case: start and end are on same edge.
-        if isinstance(start, PointProjection) and isinstance(end, PointProjection):
-            if start.parent_edge == end.parent_edge:
-                shared_edge_result = start.get_distance_between_projections_along_shared_edge(end)
-                if shared_edge_result is not None:
-                    return (shared_edge_result, [start.parent_edge])
-
-        # Otherwise, end is a PointProjection. Start by checking whether the parent edge is oneway.
-        # If it is oneway, we can only reach it from the start vertex.
-        if end.parent_edge.oneway:
-            dist, edges = self._find_shortest_edge_path_to_vertex(
+        if not isinstance(end, PointProjection):
+            raise ValueError("Start item is neither Vertex nor PointProjection.")
+        
+        # If we're here, end is a PointProjection.
+        if isinstance(start, Vertex):
+            # Can always reach the projection from the start vertex of its parent edge.
+            dist_to_backward, edges_to_backward = self._find_shortest_edge_path_to_vertex(
                 start, end.backward_vertex
             )
-            dist += end.backward_vertex_dist
-            edges.append(end.parent_edge)
-            return (dist, edges)
-
-        # Otherwise, it can be reached from both onward and backward vertices. Compute both paths and take the shorter one.
-        dist_to_backward, edges_to_backward = self._find_shortest_edge_path_to_vertex(
-            start, end.backward_vertex
-        )
-        dist_to_onward, edges_to_onward = self._find_shortest_edge_path_to_vertex(
-            start, end.onward_vertex
-        )
-        if (dist_to_backward + end.backward_vertex_dist) <= (
-            dist_to_onward + end.onward_vertex_dist
-        ):
+            dist_to_backward += end.backward_vertex_dist
             edges_to_backward.append(end.parent_edge)
-            return (dist_to_backward, edges_to_backward)
+            if dist_to_backward < best_result[0]:
+                best_result = (dist_to_backward, edges_to_backward)
+
+            # If end parent_edge is not oneway, also try reaching from the onward vertex.
+            if not end.parent_edge.oneway:
+                dist_to_onward, edges_to_onward = self._find_shortest_edge_path_to_vertex(
+                    start, end.onward_vertex
+                )
+                dist_to_onward += end.onward_vertex_dist
+                edges_to_onward.append(end.parent_edge)
+                if dist_to_onward < best_result[0]:
+                    best_result = (dist_to_onward, edges_to_onward)
+
+        elif isinstance(start, PointProjection):
+            if start.parent_edge == end.parent_edge:
+                shared_edge_result = start.get_distance_between_projections_along_shared_edge(end)
+                if shared_edge_result is not None and shared_edge_result < best_result[0]:
+                    best_result = (shared_edge_result, [start.parent_edge])
+
+            # Check other possible configurations.
+            start_vertices = [(start.onward_vertex, start.onward_vertex_dist)]
+            if not start.parent_edge.oneway:
+                start_vertices.append((start.backward_vertex, start.backward_vertex_dist))
+            end_vertices = [(end.backward_vertex, end.backward_vertex_dist)]
+            if not end.parent_edge.oneway:
+                end_vertices.append((end.onward_vertex, end.onward_vertex_dist))
+            
+            for start_vertex, start_vertex_dist in start_vertices:
+                for end_vertex, end_vertex_dist in end_vertices:
+                    dist_between_vertices, edges_between_vertices = self._find_shortest_edge_path_to_vertex(
+                        start_vertex, end_vertex
+                    )
+                    total_dist = start_vertex_dist + dist_between_vertices + end_vertex_dist
+                    total_edges = [start.parent_edge]
+                    total_edges.extend(edges_between_vertices)
+                    total_edges.append(end.parent_edge)
+                    
+                    if total_dist < best_result[0]:
+                        best_result = (total_dist, total_edges)
         else:
-            edges_to_onward.append(end.parent_edge)
-            return (dist_to_onward, edges_to_onward)
+            raise ValueError("End item is neither Vertex nor PointProjection.")
+        
+        return best_result
 
     def _find_shortest_edge_path_to_vertex(
         self, start: Vertex | PointProjection, end: Vertex
