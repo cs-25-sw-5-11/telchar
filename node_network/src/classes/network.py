@@ -175,9 +175,6 @@ class Network:
         distance_cm = self._distance_matrix[source_idx, target_idx]
         # Check if distance is the "infinity" value (unreachable)
         if distance_cm == np.iinfo(np.int32).max:
-            logger.debug(
-                f"Vertex {target_id} is not reachable from Vertex {source_id}."
-            )
             return float(np.iinfo(np.int32).max)
 
         # Convert back from centimeters to meters
