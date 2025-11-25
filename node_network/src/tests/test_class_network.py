@@ -1,11 +1,9 @@
 from classes import Edge, Network, Vertex, Trip, PointProjection
 from configs.config import LAT_BIN_SIZE, LON_BIN_SIZE, LAT_MIN, LON_MIN
-from src.classes import network
 from tests.utils_functions import build_graph_with_mock_data, setup_network_and_trip
 from utils.functions_misc import haversine
 import pytest
 import numpy as np
-import os
 
 def test_network_is_initialized_correctly():
     # Arrange
