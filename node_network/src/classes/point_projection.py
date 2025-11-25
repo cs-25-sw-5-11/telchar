@@ -47,12 +47,13 @@ class PointProjection:
         if self.id == second_projection.id:
             return 0.0
 
+        min_dist = float("inf")
+
         if self.parent_edge == second_projection.parent_edge:
             shared_edge_result = self.get_distance_between_projections_along_shared_edge(second_projection)
             if shared_edge_result is not None:
-                return shared_edge_result
+                min_dist = shared_edge_result
 
-        min_dist = float("inf")
         if self.parent_edge.oneway:
             first_vertices = [self.onward_vertex]
         else:
