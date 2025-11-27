@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, List, Optional, Tuple
+from configs.config import DIST_VERIFICATION, DIST_VERIFICATION_TOLERANCE
 
 import numpy as np
 from utils.functions_misc import (
@@ -39,16 +40,44 @@ class Trip:
         self._projection_layers: list[list[Vertex | PointProjection]] = []
 
     def process_and_apply_best_path(
-        self, best_path: list[int], times: list[float], time_interval: int
+        self, best_path: list[int], times: list[float], time_interval: int, trip_layer_distances
     ) -> None:
         if len(best_path) < 2:
             return
 
         for i in range(len(best_path) - 1):
+            time_diff = times[i + 1] - times[i]
+            # Require at least 5 seconds between points to filter out outliers
+            # caused by noise and the Viterbi algorithm jumping between nearby projections.
+            if time_diff <= 5:
+                continue
             dist, edges = self.find_shortest_edge_path(
                 start_item_id=best_path[i], end_item_id=best_path[i + 1]
             )
-            speed = dist / (times[i + 1] - times[i])  # m/s
+            dist_viterbi_input = trip_layer_distances[i][best_path[i]][best_path[i + 1]]
+            speed = dist / time_diff  # m/s
+            speed_kms = speed * 3.6  # km/h
+
+            if DIST_VERIFICATION:
+                # Validate distance against Viterbi input distance
+                if dist == 0.0 and dist_viterbi_input > 1:
+                    logger.warning(f"{self.trip_id}: Going from {i} to {i + 1} has computed distance 0 m but Viterbi input distance {dist_viterbi_input} m. Skipping.")
+                    continue
+
+                if dist_viterbi_input == 0.0 and dist > 1:
+                    logger.warning(f"{self.trip_id}: Going from {i} to {i + 1} has Viterbi input distance 0 m but computed distance {dist} m. Skipping.")
+                    continue
+
+                if dist != 0.0 and dist_viterbi_input != 0.0 and dist != np.inf:
+                    if abs(dist - dist_viterbi_input) / dist_viterbi_input > (1+DIST_VERIFICATION_TOLERANCE):
+                        logger.warning(f"{self.trip_id}: Going from {i} to {i + 1} has more than 10% difference between computed {dist} m and Viterbi input {dist_viterbi_input} m. Skipping.")
+                        continue
+            
+
+            if speed_kms > 120: # Large outliers
+                logger.debug(f"{self.trip_id}: Going from {i} to {i + 1} has unrealistic speed {speed_kms} km/h, time diff {times[i + 1] - times[i]} s, dist {dist} m.")
+                continue
+            
             time_index = get_time_index(
                 timestamp=times[i], reference=0, interval=time_interval
             )
@@ -177,10 +206,6 @@ class Trip:
                     and abs(existing_projection.lon - proj_lon) < 1e-9
                     and existing_projection.parent_edge.id == edge.id
                 ):
-                    logger.debug("Found existing projection:", existing_projection)
-                    logger.debug(
-                        "Current values: ", proj_lat, proj_lon, edge.id, seg_idx, seg_t
-                    )
                     # Found an existing projection matching this one.
                     if existing_projection not in projection_layer:
                         projection_layer.add(existing_projection)
@@ -309,15 +334,14 @@ class Trip:
         else:
             end = self.network.get_vertex_by_id(end_item_id)
 
-        # TODO rewrite to keep a running track of min result, then return that, in case one of the
-        # simple cases is not the optimal case.
-        best_result = (float("inf"), [])
 
         if isinstance(end, Vertex):
             return self._find_shortest_edge_path_to_vertex(start, end)
         
         if not isinstance(end, PointProjection):
             raise ValueError("Start item is neither Vertex nor PointProjection.")
+
+        best_result = (float("inf"), [])
         
         # If we're here, end is a PointProjection.
         if isinstance(start, Vertex):
