@@ -142,3 +142,120 @@ def test_compute_layer_distances_gives_expected_results_for_duplicate_trip_point
     assert result_dict[0][vertex_in_layer.id][vertex_in_layer.id] == 0.0
     assert result_dict[0][vertex_in_layer.id][point_projection_along_edge_0.id] >= np.iinfo(np.int32).max
     assert result_dict[0][vertex_in_layer.id][point_projection_along_edge_6.id] == pytest.approx(expected_dist_from_edge_vertex_to_edge_6_pp, abs=0.1)
+
+def test_apply_speed_to_edges_updates_edge_speeds_correctly():
+    network, trip = setup_network_and_trip()
+    edge_0 = network.get_edge_by_id(0)
+    edge_1 = network.get_edge_by_id(1)
+
+    trip.apply_speed_to_edges(edges=[edge_0, edge_1],
+                              time_index=0,
+                              speed=20)
+    trip.apply_speed_to_edges(edges=[edge_0],
+                              time_index=0,
+                              speed=40)
+    for i in range(1, 10):
+        trip.apply_speed_to_edges(edges=[edge_0],
+                                  time_index=1,
+                                  speed=i*10)
+
+    # m/s converted to cm/s and rounded 
+    assert edge_0.traversals_data[0][0] == (3000)
+    assert edge_0.traversals_data[0][2] == (2)
+    assert edge_1.traversals_data[0][0] == (2000)
+    assert edge_1.traversals_data[0][2] == (1)
+    assert edge_0.traversals_data[1][0] == (5000)
+    assert edge_0.traversals_data[1][2] == (9)
+    with pytest.raises(KeyError) as e:
+        edge_1.traversals_data[1]
+
+def test_find_shortest_edge_path_match_expected_values_going_to_vertex():
+    network, trip = setup_network_and_trip()
+    network.compute_all_pairs_shortest_paths()
+    edge_0 = network.get_edge_by_id(0)
+    vertex_2002 = network.get_vertex_by_id(2002)
+
+    pp_0 = PointProjection(trip=trip, parent_edge=edge_0,
+                           lat=45.0, lon=126.0, seg_idx=0, seg_t=0.5)
+    expected_distance = edge_0.length * (1 - 0.5) + network.get_distance(edge_0.end, vertex_2002)
+    expected_paths = [edge_0,
+                      network.get_edge_by_id(1),
+                      network.get_edge_by_id(2),
+                      network.get_edge_by_id(3),
+                      network.get_edge_by_id(7),
+                      network.get_edge_by_id(4)]
+
+    print(network.get_all_edges())
+
+    computed_distance, edge_path = trip.find_shortest_edge_path(pp_0.id, vertex_2002.id)
+
+
+    assert computed_distance == pytest.approx(expected_distance, abs=0.1)
+    assert edge_path == expected_paths
+
+def test_find_shortest_edge_path_match_expected_values_going_to_point_projection():
+    network, trip = setup_network_and_trip()
+    network.compute_all_pairs_shortest_paths()
+    edge_0 = network.get_edge_by_id(0)
+    edge_6 = network.get_edge_by_id(6)
+
+    # Lat, lon doesn't matter here, as seg_idx and seg_t determine position along edge.
+    pp_0 = PointProjection(trip=trip, parent_edge=edge_0,
+                           lat=-1, lon=-1, seg_idx=0, seg_t=0.5)
+    pp_1 = PointProjection(trip=trip, parent_edge=edge_6,
+                           lat=-1, lon=-1, seg_idx=0, seg_t=0.5)
+    expected_distance = edge_0.length * 0.5 + network.get_distance(edge_0.end, edge_6.start) + edge_6.length * 0.5
+    expected_paths = [edge_0,
+                      network.get_edge_by_id(1),
+                      network.get_edge_by_id(2),
+                      network.get_edge_by_id(3),
+                      network.get_edge_by_id(7),
+                      network.get_edge_by_id(4),
+                      edge_6]
+
+    computed_distance, edge_path = trip.find_shortest_edge_path(pp_0.id, pp_1.id)
+
+
+    assert computed_distance == pytest.approx(expected_distance, abs=0.1)
+    assert edge_path == expected_paths
+
+def test_find_shortest_path_takes_shortest_path_even_when_projections_share_an_edge():
+    # Set up a scenario where two point projections are on the same edge,
+    # but the shortest path between them goes the other way around the network.
+    network = Network()
+    vertex_1 = Vertex(network=network, lat=45.6570, lon=126.500, node_id=1001)
+    non_vertex_node_1 = (45.8310, 126.500, 1002)
+    non_vertex_node_1 = (45.8310, 126.510, 1002)
+    vertex_2 = Vertex(network=network, lat=45.6570, lon=126.510, node_id=1004)
+    edge_1 = Edge(network=network, start_vertex=vertex_1, end_vertex=vertex_2,
+                  non_vertex_nodes=[non_vertex_node_1, non_vertex_node_1], oneway=False, edge_type='primary')
+    edge_2 = Edge(network=network, start_vertex=vertex_2, end_vertex=vertex_1,
+                  non_vertex_nodes=[], oneway=False, edge_type='primary')
+    network.compute_all_pairs_shortest_paths()
+    trip = Trip(network=network, trip_id=1, lats=[], lons=[], times=[])
+    pp_0 = PointProjection(trip=trip, parent_edge=edge_1,
+                           lat=-1, lon=-1, seg_idx=0, seg_t=0.05)
+    pp_1 = PointProjection(trip=trip, parent_edge=edge_1,
+                           lat=-1, lon=-1, seg_idx=2, seg_t=0.95)
+    
+    expected_distance = pp_0.backward_vertex_dist + edge_2.length + pp_1.onward_vertex_dist
+    expected_paths = [edge_1,
+                      edge_2,
+                      edge_1]
+    computed_distance, edge_path = trip.find_shortest_edge_path(pp_0.id, pp_1.id)
+
+    assert computed_distance == pytest.approx(expected_distance, abs=0.1)
+    assert edge_path == expected_paths
+
+def test_find_shortest_edge_path_returns_0_when_input_arguments_are_identical():
+    network, trip = setup_network_and_trip()
+    network.compute_all_pairs_shortest_paths()
+    edge_0 = network.get_edge_by_id(0)
+
+    pp_0 = PointProjection(trip=trip, parent_edge=edge_0,
+                           lat=45.0, lon=126.0, seg_idx=0, seg_t=0.5)
+
+    computed_distance, edge_path = trip.find_shortest_edge_path(pp_0.id, pp_0.id)
+
+    assert computed_distance == 0.0
+    assert edge_path == []
