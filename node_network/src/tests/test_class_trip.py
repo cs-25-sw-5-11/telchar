@@ -31,7 +31,7 @@ def test_added_point_projection_can_be_accessed():
     assert trip.get_point_projection_by_id(pp2.id) == pp2
     assert trip.get_max_trip_id() == 2
 
-def test_layer_is_as_expected_when_projecting_onto_network():
+def test_layer_is_as_expected_when_projecting_trip_onto_network():
     # The trip in the setup function has no points, so a new one is made here.
     network, _ = setup_network_and_trip()
     # Single point slightly offset from vertex 1002.
@@ -61,7 +61,7 @@ def test_layer_is_as_expected_when_projecting_onto_network():
     assert trip_projection_layer_pps[0].parent_edge in [network.get_edge_by_id(0), network.get_edge_by_id(6)]
     assert trip_projection_layer_pps[1].parent_edge in [network.get_edge_by_id(0), network.get_edge_by_id(6)]
 
-def test_empty_layer_if_no_nearby_edges():
+def test_empty_layer_if_no_nearby_edges_when_using_project_trip_onto_network():
     # The trip in the setup function has no points, so a new one is made here.
     network, _ = setup_network_and_trip()
     # Furthest possible permitted point within the config max and min.
@@ -75,7 +75,7 @@ def test_empty_layer_if_no_nearby_edges():
     assert len(trip._projection_layers) == 1
     assert len(trip._projection_layers[0]) == 0
 
-def test_no_duplicates_are_created_for_identical_trip_points():
+def test_no_duplicates_are_created_for_identical_trip_points_when_using_project_trip_onto_network():
     # The trip in the setup function has no points, so a new one is made here.
     network, _ = setup_network_and_trip()
     # Single point slightly offset from vertex 1002, and a duplicate.
@@ -95,7 +95,7 @@ def test_no_duplicates_are_created_for_identical_trip_points():
     assert trip.get_max_trip_id() == 2
     assert trip._projection_layers[0] == trip._projection_layers[1]
 
-def test_distances_are_as_expected_for_duplicate_trip_points():
+def test_compute_layer_distances_gives_expected_results_for_duplicate_trip_points():
     # The trip in the setup function has no points, so a new one is made here.
     network, _ = setup_network_and_trip()
     # Single point slightly offset from vertex 1002, and a duplicate.
