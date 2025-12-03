@@ -1,6 +1,8 @@
 import os
 
 import pytest
+from utils.csv_io import read_csv_stream
+from .utils_functions import integration_clean_trips_setup, integration_clean_trips_cleanup
 from data_cleaning.clean_trips import (
     check_has_high_speed,
     check_has_repeated_timestamp,
@@ -9,7 +11,6 @@ from data_cleaning.clean_trips import (
     get_csv_files,
     is_valid_trip,
 )
-from utils.csv_io import read_csv_stream
 
 
 def test_unit_check_has_repeated_timestamp_with_no_repeated_timestamp():
@@ -272,42 +273,6 @@ def test_unit_get_csv_files_returns_csv_files_in_directory():
     os.rmdir("temp_input_dir")
 
     assert set(csv_files) == set(expected_files)
-
-
-def integration_clean_trips_setup():
-    temp_data = [
-        ["1", "45.70000", "126.50000", "0"],
-        ["1", "45.70001", "126.50001", "60"],
-        ["1", "45.70002", "126.50002", "120"],
-        ["2", "45.70000", "126.50000", "0"],
-        ["2", "45.70001", "126.50001", "0"],
-        ["2", "45.70002", "126.50002", "0"],
-        ["3", "47.70000", "128.50000", "0"],
-        ["3", "48.70000", "129.50000", "60"],
-        ["3", "49.70000", "130.50000", "120"],
-        ["4", "50.70000", "131.50000", "0"],
-        ["4", "50.70001", "131.50001", "60"],
-        ["4", "50.70002", "131.50002", "120"],
-    ]
-
-    # Make temporary input dir and create a CSV file.
-    os.makedirs("temp_input_dir", exist_ok=False)
-    with open("temp_input_dir/temp_file.csv", "w", encoding="utf-8") as f:
-        f.write("trip_id,lat,lon,timestamp\n")
-        for row in temp_data:
-            f.write(",".join(row) + "\n")
-
-    os.makedirs("temp_output_dir", exist_ok=False)
-
-
-def integration_clean_trips_cleanup():
-    # Clean up temporary files and directories created in setup.
-    os.remove("temp_input_dir/temp_file.csv")
-    os.rmdir("temp_input_dir")
-
-    os.remove("temp_output_dir/temp_file.csv")
-    os.rmdir("temp_output_dir")
-
 
 def test_integration_clean_trips_returns_already_cleaned_files_if_present():
     integration_clean_trips_setup()

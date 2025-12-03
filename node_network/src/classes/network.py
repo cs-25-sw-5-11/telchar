@@ -141,8 +141,8 @@ class Network:
             visited.add(current_id)
 
             current_vertex: Vertex = self.get_vertex_by_id(current_id)
-            for edge in current_vertex.get_outward_edges():
-                neighbor_id = edge.end.id
+            for edge, vertex in zip(current_vertex.get_outward_edges(), current_vertex.get_outward_vertices()):
+                neighbor_id = vertex.id
                 new_dist = current_dist + edge.length
 
                 if neighbor_id not in distances or new_dist < distances[neighbor_id]:
@@ -152,7 +152,9 @@ class Network:
         return distances
 
     def get_distance(self, source: Vertex, target: Vertex) -> float | None:
-        """Get precomputed distance between two vertices."""
+        """Get precomputed distance between two vertices. Result will be in meters,
+        but be rounded to two decimal places, as distances are stored in centimeters
+        in integers internally."""
         source_id = source.id
         target_id = target.id
         hash = f"{source_id}-{target_id}"
@@ -182,17 +184,19 @@ class Network:
         self._memo[hash] = result
         return result
 
-    def get_all_distances_from(self, source_id: int) -> dict[int, float]:
+    def get_all_distances_from(self, source: Vertex) -> dict[int, float]:
         """Get all distances from a source vertex."""
         if not self._distances_computed:
             raise RuntimeError(
                 "Distances not available. Call load_or_compute_all_pairs_distances() first."
             )
 
-        if source_id not in self._vertex_id_to_index:
-            return {}
+        if source.id not in self._vertex_id_to_index:
+            raise RuntimeError(
+                f"Source vertex ID {source.id} not found in the network."
+            )
 
-        source_idx = self._vertex_id_to_index[source_id]
+        source_idx = self._vertex_id_to_index[source.id]
         distances = {}
 
         INF_VALUE = np.iinfo(np.int32).max
@@ -200,6 +204,9 @@ class Network:
             if distance_cm != INF_VALUE:
                 target_id = self._index_to_vertex_id[target_idx]
                 distances[target_id] = float(distance_cm) / 100.0
+            else:
+                target_id = self._index_to_vertex_id[target_idx]
+                distances[target_id] = float(INF_VALUE)
 
         return distances
 

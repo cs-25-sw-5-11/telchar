@@ -18,3 +18,13 @@ METERS_PER_DEGREE = 92800  # Approximate meters per degree for this region
 
 # speed limit for cleaning trips
 SPEED_LIMIT = 150
+
+# Settings for processing trips.
+# Threshold for when speeds are thrown away when being applied.
+SPEED_KMS_CUTOFF = 120
+
+# Compares the distance given to Viterbi to the distance computed when
+# doing A* pathfinding between the two points determined by the Viterbi
+# algorithm to be the two "true" points for the taxi trip.  
+DIST_VERIFICATION = True 
+DIST_VERIFICATION_TOLERANCE = 0.1  # 10% tolerance

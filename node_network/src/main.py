@@ -128,7 +128,7 @@ def main() -> None:
             trip = Trip(network, trip_id, lats, lons, times)
             trip_layer_distances = trip.compute_layer_distances(max_dist=MAX_DIST)
             best_path = viterbi_algorithm(trip_layer_distances)
-            trip.process_and_apply_best_path(best_path, times, TIME_INTERVAL)
+            trip.process_and_apply_best_path(best_path, times, TIME_INTERVAL, trip_layer_distances)
 
     total_time_intervals = int(24 * 60 * 60 / TIME_INTERVAL)
     network.mark_missing_edge_traversals(max_time_index=total_time_intervals)

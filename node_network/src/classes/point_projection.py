@@ -47,17 +47,20 @@ class PointProjection:
         if self.id == second_projection.id:
             return 0.0
 
-        if self.parent_edge == second_projection.parent_edge:
-            return self.get_distance_between_projections_sharing_edge(second_projection)
-
         min_dist = float("inf")
+
+        if self.parent_edge == second_projection.parent_edge:
+            shared_edge_result = self.get_distance_between_projections_along_shared_edge(second_projection)
+            if shared_edge_result is not None:
+                min_dist = shared_edge_result
+
         if self.parent_edge.oneway:
             first_vertices = [self.onward_vertex]
         else:
             first_vertices = [self.onward_vertex, self.backward_vertex]
 
         if second_projection.parent_edge.oneway:
-            second_vertices = [second_projection.onward_vertex]
+            second_vertices = [second_projection.backward_vertex]
         else:
             second_vertices = [
                 second_projection.onward_vertex,
@@ -83,7 +86,7 @@ class PointProjection:
 
         return min_dist if min_dist != float("inf") else None
 
-    def get_distance_between_projections_sharing_edge(
+    def get_distance_between_projections_along_shared_edge(
         self, second_projection: "PointProjection"
     ) -> float | None:
         """Get the distance in meters between this projection and another projection

@@ -235,9 +235,7 @@ class Edge:
                 seg_t = t
 
         if proj_point is not None:
-            # Convert distance from degrees to meters using region-specific constant
-            min_dist_degrees = sqrt(min_dist_sq)
-            min_dist_m = min_dist_degrees * METERS_PER_DEGREE
+            min_dist_m = haversine(lat, lon, proj_point[0], proj_point[1])
         else:
             min_dist_m = None
 

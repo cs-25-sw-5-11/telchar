@@ -1,5 +1,6 @@
 import logging
 from typing import Dict, List, Optional, Tuple
+from configs.config import DIST_VERIFICATION, DIST_VERIFICATION_TOLERANCE
 
 import numpy as np
 from utils.functions_misc import (
@@ -39,22 +40,50 @@ class Trip:
         self._projection_layers: list[list[Vertex | PointProjection]] = []
 
     def process_and_apply_best_path(
-        self, best_path: list[int], times: list[float], time_interval: int
+        self, best_path: list[int], times: list[float], time_interval: int, trip_layer_distances
     ) -> None:
         if len(best_path) < 2:
             return
 
         for i in range(len(best_path) - 1):
+            time_diff = times[i + 1] - times[i]
+            # Require at least 5 seconds between points to filter out outliers
+            # caused by noise and the Viterbi algorithm jumping between nearby projections.
+            if time_diff <= 5:
+                continue
             dist, edges = self.find_shortest_edge_path(
                 start_item_id=best_path[i], end_item_id=best_path[i + 1]
             )
-            speed = dist / (times[i + 1] - times[i])  # m/s
+            dist_viterbi_input = trip_layer_distances[i][best_path[i]][best_path[i + 1]]
+            speed = dist / time_diff  # m/s
+            speed_kms = speed * 3.6  # km/h
+
+            if DIST_VERIFICATION:
+                # Validate distance against Viterbi input distance
+                if dist == 0.0 and dist_viterbi_input > 1:
+                    logger.warning(f"{self.trip_id}: Going from {i} to {i + 1} has computed distance 0 m but Viterbi input distance {dist_viterbi_input} m. Skipping.")
+                    continue
+
+                if dist_viterbi_input == 0.0 and dist > 1:
+                    logger.warning(f"{self.trip_id}: Going from {i} to {i + 1} has Viterbi input distance 0 m but computed distance {dist} m. Skipping.")
+                    continue
+
+                if dist != 0.0 and dist_viterbi_input != 0.0 and dist != np.inf:
+                    if abs(dist - dist_viterbi_input) / dist_viterbi_input > (1+DIST_VERIFICATION_TOLERANCE):
+                        logger.warning(f"{self.trip_id}: Going from {i} to {i + 1} has more than 10% difference between computed {dist} m and Viterbi input {dist_viterbi_input} m. Skipping.")
+                        continue
+            
+
+            if speed_kms > 120: # Large outliers
+                logger.debug(f"{self.trip_id}: Going from {i} to {i + 1} has unrealistic speed {speed_kms} km/h, time diff {times[i + 1] - times[i]} s, dist {dist} m.")
+                continue
+            
             time_index = get_time_index(
                 timestamp=times[i], reference=0, interval=time_interval
             )
             self.apply_speed_to_edges(edges, time_index, speed)
 
-    def get_id_max(self) -> int:
+    def get_max_trip_id(self) -> int:
         """Get the maximum ID used in this trip (for vertices and point projections)."""
         return self._point_projection_id_counter - 1
 
@@ -177,10 +206,6 @@ class Trip:
                     and abs(existing_projection.lon - proj_lon) < 1e-9
                     and existing_projection.parent_edge.id == edge.id
                 ):
-                    logger.debug("Found existing projection:", existing_projection)
-                    logger.debug(
-                        "Current values: ", proj_lat, proj_lon, edge.id, seg_idx, seg_t
-                    )
                     # Found an existing projection matching this one.
                     if existing_projection not in projection_layer:
                         projection_layer.add(existing_projection)
@@ -299,45 +324,76 @@ class Trip:
 
         # Determine if the item is a PointProjection or Vertex.
         # Vertices will have IDs with 10 or more digits, while PointProjections have smaller IDs.
-        if start_item_id <= self.get_id_max():
+        if start_item_id <= self.get_max_trip_id():
             start = self.get_point_projection_by_id(start_item_id)
         else:
             start = self.network.get_vertex_by_id(start_item_id)
 
-        if end_item_id <= self.get_id_max():
+        if end_item_id <= self.get_max_trip_id():
             end = self.get_point_projection_by_id(end_item_id)
         else:
             end = self.network.get_vertex_by_id(end_item_id)
 
-        # Simple case: end is a vertex, simply run find_shortest_edge_path_to_vertex.
+
         if isinstance(end, Vertex):
             return self._find_shortest_edge_path_to_vertex(start, end)
+        
+        if not isinstance(end, PointProjection):
+            raise ValueError("Start item is neither Vertex nor PointProjection.")
 
-        # Otherwise, end is a PointProjection. Start by checking whether the parent edge is oneway.
-        # If it is oneway, we can only reach it from the start vertex.
-        if end.parent_edge.oneway:
-            dist, edges = self._find_shortest_edge_path_to_vertex(
+        best_result = (float("inf"), [])
+        
+        # If we're here, end is a PointProjection.
+        if isinstance(start, Vertex):
+            # Can always reach the projection from the start vertex of its parent edge.
+            dist_to_backward, edges_to_backward = self._find_shortest_edge_path_to_vertex(
                 start, end.backward_vertex
             )
-            dist += end.backward_vertex_dist
-            edges.append(end.parent_edge)
-            return (dist, edges)
-
-        # Otherwise, it can be reached from both onward and backward vertices. Compute both paths and take the shorter one.
-        dist_to_backward, edges_to_backward = self._find_shortest_edge_path_to_vertex(
-            start, end.backward_vertex
-        )
-        dist_to_onward, edges_to_onward = self._find_shortest_edge_path_to_vertex(
-            start, end.onward_vertex
-        )
-        if (dist_to_backward + end.backward_vertex_dist) <= (
-            dist_to_onward + end.onward_vertex_dist
-        ):
+            dist_to_backward += end.backward_vertex_dist
             edges_to_backward.append(end.parent_edge)
-            return (dist_to_backward, edges_to_backward)
+            if dist_to_backward < best_result[0]:
+                best_result = (dist_to_backward, edges_to_backward)
+
+            # If end parent_edge is not oneway, also try reaching from the onward vertex.
+            if not end.parent_edge.oneway:
+                dist_to_onward, edges_to_onward = self._find_shortest_edge_path_to_vertex(
+                    start, end.onward_vertex
+                )
+                dist_to_onward += end.onward_vertex_dist
+                edges_to_onward.append(end.parent_edge)
+                if dist_to_onward < best_result[0]:
+                    best_result = (dist_to_onward, edges_to_onward)
+
+        elif isinstance(start, PointProjection):
+            if start.parent_edge == end.parent_edge:
+                shared_edge_result = start.get_distance_between_projections_along_shared_edge(end)
+                if shared_edge_result is not None and shared_edge_result < best_result[0]:
+                    best_result = (shared_edge_result, [start.parent_edge])
+
+            # Check other possible configurations.
+            start_vertices = [(start.onward_vertex, start.onward_vertex_dist)]
+            if not start.parent_edge.oneway:
+                start_vertices.append((start.backward_vertex, start.backward_vertex_dist))
+            end_vertices = [(end.backward_vertex, end.backward_vertex_dist)]
+            if not end.parent_edge.oneway:
+                end_vertices.append((end.onward_vertex, end.onward_vertex_dist))
+            
+            for start_vertex, start_vertex_dist in start_vertices:
+                for end_vertex, end_vertex_dist in end_vertices:
+                    dist_between_vertices, edges_between_vertices = self._find_shortest_edge_path_to_vertex(
+                        start_vertex, end_vertex
+                    )
+                    total_dist = start_vertex_dist + dist_between_vertices + end_vertex_dist
+                    total_edges = [start.parent_edge]
+                    total_edges.extend(edges_between_vertices)
+                    total_edges.append(end.parent_edge)
+                    
+                    if total_dist < best_result[0]:
+                        best_result = (total_dist, total_edges)
         else:
-            edges_to_onward.append(end.parent_edge)
-            return (dist_to_onward, edges_to_onward)
+            raise ValueError("End item is neither Vertex nor PointProjection.")
+        
+        return best_result
 
     def _find_shortest_edge_path_to_vertex(
         self, start: Vertex | PointProjection, end: Vertex
