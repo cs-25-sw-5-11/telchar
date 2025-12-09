@@ -311,13 +311,13 @@ def process_single_day(
 
 if __name__ == "__main__":
     gps_files: List[str] = [
-        "./data/output_data/edge_data_day3.csv",
-        "./data/output_data/edge_data_day4.csv",
-        "./data/output_data/edge_data_day5.csv",
-        "./data/output_data/edge_data_day6.csv",
-        "./data/output_data/edge_data_day7.csv",
+        "./data/cleaned_data/trips_150103.csv",
+        "./data/cleaned_data/trips_150104.csv",
+        "./data/cleaned_data/trips_150105.csv",
+        "./data/cleaned_data/trips_150106.csv",
+        "./data/cleaned_data/trips_150107.csv",
     ]
-    network_file: str = "./data/osm_data/harbin/edges.shp"
+    network_file: str = "./data/osm/harbin/edges.shp"
 
     vertex_df: pd.DataFrame = generate_vertex_csv(
         network_file, "./data/output_data/vertex.csv"
