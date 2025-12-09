@@ -111,7 +111,7 @@ def parse_stmatch_results(
 
 
 def create_time_edge_matrix(
-    traversals_df: pd.DataFrame, time_interval_minutes: int = 5
+    traversals_df: pd.DataFrame, edge_lengths: Dict[int,float], time_interval_minutes: int = 5
 ) -> pd.DataFrame:
     """Create time-edge matrix with traversal times.
 
@@ -148,7 +148,7 @@ def create_time_edge_matrix(
         include_lowest=True,
     )
 
-    all_edges: List[int] = sorted(traversals_df["edge_id"].unique())
+    all_edges: List[int] = sorted(edge_lengths.keys)
 
     # Aggregate: for each (time_slot, edge), calculate mean traversal time
     aggregated: pd.DataFrame = (
@@ -303,7 +303,8 @@ def process_single_day(
         result_file, gps_file, edge_lengths
     )
     matrix: pd.DataFrame = create_time_edge_matrix(
-        traversals_df, time_interval_minutes=5
+        traversals_df, time_interval_minutes=5,
+        edge_lengths=edge_lengths
     )
 
     return matrix
