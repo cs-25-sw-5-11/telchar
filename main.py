@@ -148,7 +148,7 @@ def create_time_edge_matrix(
         include_lowest=True,
     )
 
-    all_edges: List[int] = sorted(edge_lengths.keys)
+    all_edges: List[int] = sorted(edge_lengths.keys())
 
     # Aggregate: for each (time_slot, edge), calculate mean traversal time
     aggregated: pd.DataFrame = (
@@ -312,6 +312,7 @@ def process_single_day(
 
 if __name__ == "__main__":
     gps_files: List[str] = [
+        "./data/cleaned_data/short.csv",
         "./data/cleaned_data/trips_150103.csv",
         "./data/cleaned_data/trips_150104.csv",
         "./data/cleaned_data/trips_150105.csv",
