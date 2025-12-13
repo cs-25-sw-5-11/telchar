@@ -53,7 +53,7 @@ def save_graph_shapefile_directional(
 if __name__ == "__main__":
     print("osmnx version", ox.__version__)
 
-    df: pd.DataFrame = pd.read_csv("data/cleaned_data/trips_150103.csv", sep=";")
+    df: pd.DataFrame = pd.read_csv("input/trips_150103.csv", sep=";")
 
     y1: float = df["latitude"].max() + 0.01
     y2: float = df["latitude"].min() - 0.01
@@ -65,5 +65,5 @@ if __name__ == "__main__":
     G: nx.MultiDiGraph = ox.graph_from_polygon(boundary_polygon, network_type="drive")
 
     start_time: float = time.time()
-    save_graph_shapefile_directional(G, filepath="./data/osm/harbin")
+    save_graph_shapefile_directional(G, filepath="./tmp/osm/harbin")
     print("--- %s seconds ---" % (time.time() - start_time))

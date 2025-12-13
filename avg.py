@@ -5,11 +5,11 @@ import pandas as pd
 
 # List of edge data files from the 5 days
 edge_data_files: List[str] = [
-    "./data/output_data/edge_data_day3.csv",
-    "./data/output_data/edge_data_day4.csv",
-    "./data/output_data/edge_data_day5.csv",
-    "./data/output_data/edge_data_day6.csv",
-    "./data/output_data/edge_data_day7.csv",
+    "./output/edge_data_day3.csv",
+    "./output/edge_data_day4.csv",
+    "./output/edge_data_day5.csv",
+    "./output/edge_data_day6.csv",
+    "./output/edge_data_day7.csv",
 ]
 
 print("\n=== Averaging results across days ===")
@@ -41,10 +41,10 @@ averaged_df: pd.DataFrame = combined_df.copy()
 averaged_df.iloc[:, 1:] = averaged_values.fillna(-1)
 
 # Save the averaged results
-averaged_df.to_csv("./data/output_data/edge_data_averaged.csv", index=False)
+averaged_df.to_csv("./output/edge_data_averaged.csv", index=False)
 
 print(
-    "\n=== Final averaged file saved to ./data/output_data/edge_data_averaged.csv ==="
+    "\n=== Final averaged file saved to ./output/edge_data_averaged.csv ==="
 )
 print(f"Shape: {averaged_df.shape}")
 

@@ -1,5 +1,11 @@
-cache
-data/dataosm
-data/input_data
-data/osm/harbin
-._dataosm
+# Temporary/generated files
+tmp/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# macOS
+._*
+.DS_Store

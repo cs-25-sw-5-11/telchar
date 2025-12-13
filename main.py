@@ -312,25 +312,25 @@ def process_single_day(
 
 if __name__ == "__main__":
     gps_files: List[str] = [
-        "./data/cleaned_data/short.csv",
-        "./data/cleaned_data/trips_150103.csv",
-        "./data/cleaned_data/trips_150104.csv",
-        "./data/cleaned_data/trips_150105.csv",
-        "./data/cleaned_data/trips_150106.csv",
-        "./data/cleaned_data/trips_150107.csv",
+        "./input/short.csv",
+        "./input/trips_150103.csv",
+        "./input/trips_150104.csv",
+        "./input/trips_150105.csv",
+        "./input/trips_150106.csv",
+        "./input/trips_150107.csv",
     ]
-    network_file: str = "./data/osm/harbin/edges.shp"
+    network_file: str = "./tmp/osm/harbin/edges.shp"
 
     vertex_df: pd.DataFrame = generate_vertex_csv(
-        network_file, "./data/output_data/vertex.csv"
+        network_file, "./output/vertex.csv"
     )
     edge_conn_df: pd.DataFrame = generate_edge_connections_csv(
-        network_file, "./data/output_data/edge_connections.csv"
+        network_file, "./output/edge_connections.csv"
     )
 
     for i, gps_file in enumerate(gps_files, start=3):
-        result_file: str = f"./data/output_data/matched_data_day{i}.txt"
-        edge_data_file: str = f"./data/output_data/edge_data_day{i}.csv"
+        result_file: str = f"./output/matched_data_day{i}.txt"
+        edge_data_file: str = f"./output/edge_data_day{i}.csv"
         matrix: pd.DataFrame = process_single_day(gps_file, network_file, result_file)
         matrix.to_csv(edge_data_file, index=False)
         print(f"Matrix saved to {edge_data_file}")
